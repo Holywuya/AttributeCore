@@ -19,6 +19,7 @@ class AttributeDamage : SubAttribute(priority = 0) {
 
         // 如果没有 max, 则取固定值 min
         val finalDamage = if (max > min) random(min, max) else min
+
         data.addDamage("Default", finalDamage)
     }
 

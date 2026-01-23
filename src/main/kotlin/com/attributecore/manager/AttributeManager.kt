@@ -18,7 +18,7 @@ object AttributeManager {
     private val NUMBER_PATTERN = Regex("""(\d+(?:\.\d+)?)""")
 
     fun init() {
-        attributes.add(AttributeDamage()) // 注册物理伤害
+        attributes.add(AttributeDamage())
         attributes.sort()
     }
 
@@ -37,7 +37,6 @@ object AttributeManager {
 
             for ((key, valueTag) in coreNode) {
                 if (!enabledNames.contains(key)) continue
-
                 // 解析 NBT 字符串中的数字 (例如 "100-200")
                 val nums = NUMBER_PATTERN.findAll(valueTag.asString()).map { it.value.toDouble() }.toList()
                 if (nums.isEmpty()) continue
