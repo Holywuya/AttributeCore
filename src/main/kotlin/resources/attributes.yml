@@ -1,0 +1,11 @@
+# attributes.yml
+# 这里的 Key 是 NBT 里的名字 (例如 AttributeCore.物理伤害)
+# Value 是对应的内部属性 ID
+stats:
+  "物理伤害":
+    - "MinDamage"
+    - "MaxDamage"
+  "防御力":
+    - "Defense"
+  "暴击几率":
+    - "CritRate"
