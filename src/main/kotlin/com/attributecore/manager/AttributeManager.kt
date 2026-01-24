@@ -104,15 +104,17 @@ object AttributeManager {
             val itemLore = item.itemMeta?.lore ?: emptyList<String>()
 
             attributes.forEach { attr ->
-                // A. NBT 读取
                 var minVal = tag.getDeepDouble("$NBT_ROOT.${attr.key}", 0.0)
                 var maxVal = minVal
 
-                // B. Lore 扫描 (如果 NBT 无数据)
                 if (minVal == 0.0 && itemLore.isNotEmpty()) {
                     for (line in itemLore) {
-                        if (attr.names.any { line.contains(it) }) {
-                            val range = extractValueRange(line) // 返回 [min, max]
+                        val matchedName = attr.names.firstOrNull { name ->
+                            line.contains("$name:") || line.contains("$name：") || line.contains(name)
+                        }
+
+                        if (matchedName != null) {
+                            val range = extractValueRange(line)
                             if (range[0] != 0.0 || range[1] != 0.0) {
                                 minVal = range[0]
                                 maxVal = range[1]

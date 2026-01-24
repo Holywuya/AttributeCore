@@ -73,6 +73,10 @@ object DamageListener {
             finalDamage = ShieldManager.absorbDamage(defender, finalDamage)
         }
 
+        if (damageData.isCrit) {
+            // 暴击特效逻辑
+        }
+
         // 9. 将结果写回 Bukkit 事件
         e.damage = finalDamage
 

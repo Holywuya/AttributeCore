@@ -1,6 +1,7 @@
 package com.attributecore.event
 
 import com.attributecore.data.DamageData
+import com.attributecore.manager.ReactionManager
 import com.attributecore.manager.ShieldManager
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
@@ -11,9 +12,9 @@ import taboolib.module.kether.KetherShell
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadLocalRandom
 
-// ✅ 1. 将 typealias 移动到类外面（文件顶层）
-private typealias AttackHandler = (DamageData, Double) -> Unit
-private typealias DefendHandler = (DamageData, Double) -> Unit
+// ✅ 1. 将 typealias 移动到类外面，并增加 attrTags 参数用于识别当前属性的标签
+private typealias AttackHandler = (DamageData, Double, List<String>) -> Unit
+private typealias DefendHandler = (DamageData, Double, List<String>) -> Unit
 private typealias UpdateHandler = (LivingEntity, Double) -> Unit
 
 object AttributeBehaviors {
@@ -27,20 +28,32 @@ object AttributeBehaviors {
     }
 
     private fun registerDefaults() {
-        // --- 注册原生攻击行为 ---
-        registerAttack("add_damage") { data, value -> data.addDamage(value) }
-        registerAttack("multiply_damage") { data, value -> data.setDamageMultiplier(1.0 + (value / 100.0)) }
-        registerAttack("crit") { d, v ->
+        // --- 注册原生攻击行为 (使用 _ 忽略不需要的标签参数) ---
+        registerAttack("add_damage") { data, value, _ -> data.addDamage(value) }
+
+        registerAttack("multiply_damage") { data, value, _ ->
+            data.setDamageMultiplier(1.0 + (value / 100.0))
+        }
+
+        registerAttack("crit") { d, v, _ ->
             if (ThreadLocalRandom.current().nextDouble(100.0) < v) {
                 d.isCrit = true
             }
         }
-        registerAttack("crit_damage") { d, v ->
+
+        registerAttack("crit_damage") { d, v, _ ->
             d.addCritDamage(v)
         }
-        registerAttack("penetrate_fixed") { data, value -> data.addFixedPenetration(value) }
-        registerAttack("penetrate_percent") { data, value -> data.addPercentPenetration(value) }
-        registerAttack("vampire") { data, value ->
+
+        registerAttack("penetrate_fixed") { data, value, _ ->
+            data.addFixedPenetration(value)
+        }
+
+        registerAttack("penetrate_percent") { data, value, _ ->
+            data.addPercentPenetration(value)
+        }
+
+        registerAttack("vampire") { data, value, _ ->
             val heal = data.getFinalDamage() * (value / 100.0)
             val p = data.attacker
             val maxHealthAttr = p.getAttribute(Attribute.GENERIC_MAX_HEALTH)
@@ -49,11 +62,27 @@ object AttributeBehaviors {
             }
         }
 
+        // 元素注入行为 (核心逻辑)
+        registerAttack("element_apply") { data, value, attrTags ->
+            // 从当前触发此行为的属性标签中寻找 ELEMENT_ 开头的标签
+            val element = attrTags.firstOrNull { it.startsWith("ELEMENT_") }?.replace("ELEMENT_", "")
+
+            if (element != null) {
+                // 调用反应管理器处理附着与反应
+                val reactionName = ReactionManager.handleElement(data.defender, element, data)
+
+                // 如果触发了反应，提示攻击者
+                if (reactionName != null) {
+                    data.attacker.sendMessage("§f[元素反应] $reactionName")
+                }
+            }
+        }
+
         // --- 注册原生防御行为 ---
-        registerDefend("defend") { data, value -> data.addDefenseScore(value) }
-        registerDefend("armor") { data, value -> data.addDefenseScore(value) }
-        registerDefend("reduce_percent") { data, value -> data.addDirectReductionPercent(value) }
-        registerDefend("dodge") { data, value ->
+        registerDefend("defend") { data, value, _ -> data.addDefenseScore(value) }
+        registerDefend("armor") { data, value, _ -> data.addDefenseScore(value) }
+        registerDefend("reduce_percent") { data, value, _ -> data.addDirectReductionPercent(value) }
+        registerDefend("dodge") { data, value, _ ->
             if (ThreadLocalRandom.current().nextDouble(100.0) < value) {
                 data.setDamageMultiplier(0.0)
             }
@@ -84,11 +113,11 @@ object AttributeBehaviors {
 
     // ================= 执行入口 =================
 
-    fun handleAttack(behavior: String, damageData: DamageData, value: Double) {
+    fun handleAttack(behavior: String, damageData: DamageData, value: Double, attrTags: List<String>) {
         val key = behavior.lowercase()
         val handler = attackBehaviors[key]
         if (handler != null) {
-            handler(damageData, value)
+            handler(damageData, value, attrTags)
         } else {
             val script = BehaviorLoader.scriptCache[key]
             if (script != null) {
@@ -96,17 +125,18 @@ object AttributeBehaviors {
                     "damage_data" to damageData,
                     "value" to value,
                     "attacker" to damageData.attacker,
-                    "defender" to damageData.defender
+                    "defender" to damageData.defender,
+                    "tags" to attrTags
                 ))
             }
         }
     }
 
-    fun handleDefend(behavior: String, damageData: DamageData, value: Double) {
+    fun handleDefend(behavior: String, damageData: DamageData, value: Double, attrTags: List<String>) {
         val key = behavior.lowercase()
         val handler = defendBehaviors[key]
         if (handler != null) {
-            handler(damageData, value)
+            handler(damageData, value, attrTags)
         } else {
             val script = BehaviorLoader.scriptCache[key]
             if (script != null) {
@@ -114,7 +144,8 @@ object AttributeBehaviors {
                     "damage_data" to damageData,
                     "value" to value,
                     "attacker" to damageData.attacker,
-                    "defender" to damageData.defender
+                    "defender" to damageData.defender,
+                    "tags" to attrTags
                 ))
             }
         }
@@ -140,17 +171,13 @@ object AttributeBehaviors {
         }
     }
 
-    // ================= ✅ 修复 KetherShell 调用逻辑 =================
-
     private fun runKetherScript(scriptContent: String, sender: LivingEntity, vars: Map<String, Any>) {
         try {
-            // ✅ 修改点：正确传入命名空间和上下文变量
             KetherShell.eval(
                 scriptContent,
                 sender = if (sender is Player) adaptPlayer(sender) else null,
                 namespace = listOf("attributecore")
             ) {
-                // 在这个闭包里，this 是 ScriptContext
                 vars.forEach { (k, v) -> set(k, v) }
             }
         } catch (e: Exception) {

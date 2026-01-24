@@ -22,7 +22,7 @@ class DamageData(
     private var fixedPenetration = 0.0
     private var percentPenetration = 0.0
 
-    private val tags = mutableSetOf<String>()
+    val tags = mutableSetOf<String>()
 
     fun addTag(tag: String) = tags.add(tag.uppercase())
     fun hasTag(tag: String) = tags.contains(tag.uppercase())
