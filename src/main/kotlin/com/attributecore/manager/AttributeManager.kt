@@ -1,54 +1,126 @@
 package com.attributecore.manager
 
-
 import com.attributecore.data.AttributeData
-import com.attributecore.data.sub.SubAttribute
-import com.attributecore.data.sub.subAttribute.AttributeDamage
-import com.attributecore.util.ConfigLoader
+import com.attributecore.data.attribute.BaseAttribute
+import com.attributecore.event.AttributeLoader
+import org.bukkit.Bukkit
 import org.bukkit.entity.LivingEntity
-import taboolib.module.nms.getItemTag
-import taboolib.platform.util.isAir
-
-import java.util.concurrent.CopyOnWriteArrayList
-
-import kotlin.collections.iterator
+import taboolib.common.platform.function.info
+import taboolib.common.platform.function.submit
+import taboolib.common5.LoreMap
+import java.util.UUID
 
 object AttributeManager {
-    val attributes = CopyOnWriteArrayList<SubAttribute>()
-    private val NUMBER_PATTERN = Regex("""(\d+(?:\.\d+)?)""")
+
+    private val attributes = mutableListOf<BaseAttribute>()
+    val loreMap = LoreMap<BaseAttribute>(true, true, true)
+    private val entityDataCache = mutableMapOf<UUID, AttributeData>()
 
     fun init() {
-        attributes.add(AttributeDamage())
-        attributes.sort()
+        // ✅ 自动加载：从 attributes 文件夹扫描并注册所有属性
+        val loadedAttributes = AttributeLoader.loadAttributesFromFolder()
+        attributes.addAll(loadedAttributes)
+
+        // 初始化 Lore 映射
+        refreshLoreMap()
+
+        // 启动更新任务
+        startUpdateTask()
+
+        info("§a[AttributeManager] 已注册 ${attributes.size} 个属性")
     }
 
-    fun getEntityData(entity: LivingEntity): AttributeData {
-        val data = AttributeData(entity.uniqueId)
-        val equipment = entity.equipment ?: return data
-        val enabledNames = ConfigLoader.attributes.getStringList("names")
+    /**
+     * 刷新 Lore 映射
+     * 参考 AttributeSystem 的注册机制[13]
+     */
+    private fun refreshLoreMap() {
+        loreMap.clear()
+        attributes.forEach { attr ->
+            attr.names.forEach { name ->
+                loreMap.put(name,attr)
+            }
+        }
+    }
 
-        // 遍历所有装备位置
-        listOfNotNull(
-            equipment.helmet, equipment.chestplate, equipment.leggings, equipment.boots,
-            equipment.itemInMainHand, equipment.itemInOffHand
-        ).filter { !it.isAir() }.forEach { item ->
-            val tag = item.getItemTag()
-            val coreNode = tag["AttributeCore"]?.asCompound() ?: return@forEach
+    /**
+     * 重新加载所有属性
+     * 参考 SXAttribute 的重载机制[7]
+     */
+    fun reloadAttributes() {
+        info("§e[AttributeManager] §f正在重新加载属性...")
 
-            for ((key, valueTag) in coreNode) {
-                if (!enabledNames.contains(key)) continue
-                // 解析 NBT 字符串中的数字 (例如 "100-200")
-                val nums = NUMBER_PATTERN.findAll(valueTag.asString()).map { it.value.toDouble() }.toList()
-                if (nums.isEmpty()) continue
+        // 清空现有属性
+        attributes.clear()
+        entityDataCache.clear()
 
-                if (nums.size >= 2) {
-                    data.add(key, nums[0])            // 最小值
-                    data.add("$key.max", nums[1])     // 最大值
-                } else {
-                    data.add(key, nums[0])            // 单数值
+        // 重新加载
+        val loadedAttributes = AttributeLoader.loadAttributesFromFolder()
+        attributes.addAll(loadedAttributes)
+
+
+        // 重新初始化映射
+        refreshLoreMap()
+
+        info("§a[AttributeManager] 属性重载完成！共加载 ${attributes.size} 个属性")
+    }
+
+    fun registerAttribute(attribute: BaseAttribute) {
+        attributes.add(attribute)
+    }
+
+    fun getAttributes(): List<BaseAttribute> {
+        return attributes.sortedBy { it.priority }
+    }
+
+    fun getData(entity: LivingEntity): AttributeData {
+        return entityDataCache.getOrPut(entity.uniqueId) { AttributeData(entity) }
+    }
+
+    fun update(entity: LivingEntity) {
+        val data = getData(entity)
+        data.reset()
+
+        val items = entity.equipment?.let {
+            listOfNotNull(
+                it.helmet,
+                it.chestplate,
+                it.leggings,
+                it.boots,
+                it.itemInMainHand,
+                it.itemInOffHand
+            )
+        } ?: return
+
+        items.forEach { item ->
+            item.itemMeta?.lore?.forEach { loreLine ->
+                val matched = loreMap[loreLine]
+                if (matched != null) {
+                    val value = extractValue(loreLine)
+                    if (value > 0) {
+                        data.setValueRange(matched.key, value, value)
+                    }
                 }
             }
         }
-        return data
+    }
+
+    fun extractValue(lore: String): Double {
+        val regex = "\\d+(\\.\\d+)?".toRegex()
+        val match = regex.find(lore)
+        return match?.value?.toDoubleOrNull() ?: 0.0
+    }
+
+    fun clearCache() {
+        entityDataCache.clear()
+        info("§a[AttributeManager] 实体属性数据缓存已清空")
+    }
+
+    private fun startUpdateTask() {
+        submit(period = 20 * 5) {
+            Bukkit.getOnlinePlayers().forEach { player ->
+                update(player)
+            }
+        }
     }
 }

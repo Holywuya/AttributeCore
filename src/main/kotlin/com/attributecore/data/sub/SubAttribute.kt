@@ -7,6 +7,7 @@ import com.attributecore.data.DamageData
  * 所有的具体属性（攻击力、防御力、暴击等）都继承此类
  */
 abstract class SubAttribute(val priority: Int = 0) : Comparable<SubAttribute> {
+    
     abstract fun getName(): String
     open fun onAttack(data: DamageData) {}
     open fun onDefend(data: DamageData) {}

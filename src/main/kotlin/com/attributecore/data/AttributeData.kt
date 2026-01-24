@@ -1,30 +1,54 @@
 package com.attributecore.data
 
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import org.bukkit.entity.LivingEntity
 
 /**
- * 存储某个实体的所有属性值
- * Key: 属性内部名 (例如 "Damage")
- * Value: 属性值 (例如 100.0)
+ * 属性数据容器，存储实体当前的所有属性值
+ * 参考了 SXAttribute 的数据结构[20]
  */
-class AttributeData(val uuid: UUID) {
-    val values = ConcurrentHashMap<String, Double>()
+class AttributeData(val entity: LivingEntity) {
 
-    fun get(attributeName: String): Double {
-        return values.getOrDefault(attributeName, 0.0)
+    /** 存储属性值，key为属性标识符，value为DoubleArray[最小值, 最大值][20] */
+    val values = mutableMapOf<String, DoubleArray>()
+
+    /**
+     * 设置属性值
+     * @param key 属性标识符
+     * @param value 属性值
+     */
+    fun setValue(key: String, value: Double) {
+        values[key] = doubleArrayOf(value, value)
     }
 
-    fun set(attributeName: String, value: Double) {
-        values[attributeName] = value
+    /**
+     * 设置属性范围值
+     * @param key 属性标识符
+     * @param min 最小值
+     * @param max 最大值
+     */
+    fun setValueRange(key: String, min: Double, max: Double) {
+        values[key] = doubleArrayOf(min, max)
     }
 
-    fun add(attributeName: String, value: Double) {
-        values.merge(attributeName, value) { old, new -> old + new }
+    /**
+     * 获取属性值数组 [最小值, 最大值][20]
+     * @param key 属性标识符或名称
+     */
+    fun get(key: String): DoubleArray {
+        return values[key] ?: doubleArrayOf(0.0, 0.0)
     }
 
-    // 清空当前数据，用于重算
-    fun clear() {
+    /**
+     * 获取属性的基础值（最小值）
+     */
+    fun getBaseValue(key: String): Double {
+        return get(key)[0]
+    }
+
+    /**
+     * 重置所有属性值
+     */
+    fun reset() {
         values.clear()
     }
 }
