@@ -1,0 +1,63 @@
+# ==========================================
+#          AttributeCore 基础属性配置
+# ==========================================
+
+# 物理攻击 (原生行为)
+physical_damage:
+  type: ATTACK
+  display: "&f物理攻击"
+  names:
+    - "物理攻击"
+    - "物理伤害"
+    - "Attack"
+  priority: 10
+  behavior: "add_damage" # 调用原生硬编码逻辑
+  tags: ["PHYSICAL"]
+
+# 物理防御 (原生行为)
+physical_defense:
+  type: DEFENSE
+  display: "&f物理防御"
+  names:
+    - "物理防御"
+    - "护甲"
+    - "Defense"
+  priority: 10
+  behavior: "armor" # 调用原生护甲曲线逻辑
+  tags: ["PHYSICAL"]
+
+# 暴击率
+crit_chance:
+  type: ATTACK
+  display: "&6暴击率"
+  behavior: "crit"
+  names: ["暴击率"]
+
+# 暴击伤害
+crit_damage:
+  type: ATTACK
+  display: "&c暴击伤害"
+  behavior: "crit_damage"
+  names: ["暴击伤害", "CritDamage"]
+
+# 暴击率 (脚本行为)
+crit_chance_kether:
+  type: ATTACK
+  display: "&6暴击率_kether"
+  names: ["暴击率_kether", "_kether"]
+  priority: 5
+  behavior: "custom_crit" # 调用 behaviors 文件夹中的脚本
+
+# 最大生命值 (更新回调)
+max_health:
+  type: UPDATE
+  display: "&a最大生命"
+  names: ["最大生命", "MaxHealth", "HP"]
+  behavior: "add_health" # 调用原生更新逻辑
+
+# 能量护盾 (更新回调)
+max_shield:
+  type: UPDATE
+  display: "&b能量护盾"
+  names: ["护盾上限", "Shield"]
+  behavior: "add_max_shield"

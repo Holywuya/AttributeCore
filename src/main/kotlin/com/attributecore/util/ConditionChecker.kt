@@ -18,8 +18,7 @@ object ConditionChecker {
         // 非玩家实体（如怪物）默认忽略条件，直接生效
         if (entity !is Player) return true
 
-        // 或者是 OP 也可以选择跳过检查 (可选)
-        // if (entity.isOp) return true
+        if (entity.isOp) return true
 
         val lore = item.itemMeta?.lore ?: return true
 

@@ -14,7 +14,7 @@ object AttributeCore : Plugin() {
         com.attributecore.manager.AttributeManager.init()
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            AttributeExpansion.PlaceholderRegister()
+            info("[AttributeCore] 检测到PlaceholderAPI，已注册")
         }
 
         info("§a[AttributeCore] 插件启用完成！")
