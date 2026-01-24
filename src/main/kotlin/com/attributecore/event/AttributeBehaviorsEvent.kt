@@ -1,39 +1,45 @@
 package com.attributecore.event
 
 import com.attributecore.data.DamageData
+import java.util.concurrent.ThreadLocalRandom
 
-/**
- * 属性行为处理器
- * 扩展更多预定义的行为模式
- */
 object AttributeBehaviors {
 
-    /**
-     * 处理属性行为
-     */
-    fun handleBehavior(behavior: String, damageData: DamageData, value: Double) {
-        when (behavior) {
-            // 加伤
-            "add_damage" -> {
-                damageData.addDamage(value)
-            }
+    fun handleAttack(behavior: String, damageData: DamageData, value: Double) {
+        val random = ThreadLocalRandom.current()
+        when (behavior.lowercase()) {
+            "add_damage" -> damageData.addDamage(value)
 
-            // 伤害百分比增加
-            "multiply_damage" -> {
-                val current = damageData.getFinalDamage()
-                damageData.addDamage(current * (value / 100.0))
-            }
+            "multiply_damage" -> damageData.setDamageMultiplier(1.0 + (value / 100.0))
 
-            // 暴击
             "crit" -> {
-                if (Math.random() < (value / 100.0)) {
-                    damageData.addDamage(damageData.getFinalDamage())
+                if (random.nextDouble(100.0) < value) {
+                    damageData.setDamageMultiplier(2.0)
+                    damageData.attacker.sendMessage("§6§l暴击！")
                 }
             }
 
-            // 穿透
-            "penetrate" -> {
-                // 实现穿透逻辑
+            "penetrate_percent" -> damageData.addPercentPenetration(value)
+
+            "vampire" -> {
+                val heal = damageData.getFinalDamage() * (value / 100.0)
+                damageData.attacker.health = (damageData.attacker.health + heal).coerceAtMost(damageData.attacker.maxHealth)
+            }
+        }
+    }
+
+    fun handleDefend(behavior: String, damageData: DamageData, value: Double) {
+        val random = ThreadLocalRandom.current()
+        when (behavior.lowercase()) {
+            "defend", "armor" -> damageData.addDefenseScore(value)
+
+            "reduce_percent", "resistance" -> damageData.addDirectReductionPercent(value)
+
+            "dodge" -> {
+                if (random.nextDouble(100.0) < value) {
+                    damageData.setDamageMultiplier(0.0)
+                    damageData.defender.sendMessage("§f§l闪避！")
+                }
             }
         }
     }

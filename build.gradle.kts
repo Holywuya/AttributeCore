@@ -1,21 +1,6 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import io.izzel.taboolib.gradle.*
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
-import io.izzel.taboolib.gradle.Basic
-import io.izzel.taboolib.gradle.BukkitHook
-import io.izzel.taboolib.gradle.BukkitNMS
-import io.izzel.taboolib.gradle.BukkitUI
-import io.izzel.taboolib.gradle.JavaScript
-import io.izzel.taboolib.gradle.Kether
-import io.izzel.taboolib.gradle.Bukkit
-import io.izzel.taboolib.gradle.MinecraftChat
-import io.izzel.taboolib.gradle.DatabasePlayer
-import io.izzel.taboolib.gradle.Database
-import io.izzel.taboolib.gradle.CommandHelper
-import io.izzel.taboolib.gradle.BukkitNMSDataSerializer
-import io.izzel.taboolib.gradle.BukkitNMSEntityAI
-import io.izzel.taboolib.gradle.BukkitNMSItemTag
-import io.izzel.taboolib.gradle.BukkitNMSUtil
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 
 plugins {
@@ -27,19 +12,12 @@ plugins {
 taboolib {
     env {
         install(Basic)
-        install(BukkitHook)
-        install(BukkitNMS)
         install(BukkitUI)
-        install(Kether)
+        install(BukkitHook)
         install(Bukkit)
-        install(MinecraftChat)
+        install(BukkitUtil)
         install(DatabasePlayer)
-        install(Database)
-        install(CommandHelper)
-        install(BukkitNMSDataSerializer)
-        install(BukkitNMSEntityAI)
         install(BukkitNMSItemTag)
-        install(BukkitNMSUtil)
     }
     description {
         name = "AttributeCore"
@@ -51,6 +29,7 @@ taboolib {
 }
 
 repositories {
+    maven("https://maven.aliyun.com/repository/public")
     mavenCentral()
 }
 

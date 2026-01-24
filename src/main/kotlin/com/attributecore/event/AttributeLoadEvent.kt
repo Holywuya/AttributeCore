@@ -3,6 +3,7 @@ package com.attributecore.event
 import com.attributecore.data.AttributeType
 import com.attributecore.data.DamageData
 import com.attributecore.data.attribute.BaseAttribute
+import org.bukkit.entity.LivingEntity
 import taboolib.common.platform.function.console
 import taboolib.common.platform.function.getDataFolder
 import taboolib.library.configuration.ConfigurationSection
@@ -13,14 +14,12 @@ import java.nio.charset.StandardCharsets
 
 /**
  * 属性配置加载器
- * 修复了 ConfigurationSection 类型不匹配和资源释放的问题
+ * 已集成标签 (Tags) 过滤系统：实现物理防御仅抵挡物理伤害等功能
  */
 object AttributeLoader {
 
-    /** 资源中的属性文件夹路径 */
     private const val RESOURCE_ATTRIBUTES_PATH = "attributes"
 
-    /** 插件数据文件夹中的属性文件夹 */
     private val dataAttributesFolder: File
         get() = File(getDataFolder(), RESOURCE_ATTRIBUTES_PATH)
 
@@ -30,30 +29,18 @@ object AttributeLoader {
     fun loadAttributesFromFolder(): List<BaseAttribute> {
         val attributes = mutableListOf<BaseAttribute>()
 
-        // 1. 初始化文件夹 (如果没有文件，生成默认配置)
         prepareFolderAndResources()
 
-        // 2. 扫描文件夹中的所有 .yml 文件
         val files = dataAttributesFolder.listFiles { _, name -> name.endsWith(".yml") }
-
-        if (files.isNullOrEmpty()) {
-            console().sendMessage("§e[AttributeLoader] §f未找到属性配置文件。")
-            return emptyList()
-        }
+        if (files.isNullOrEmpty()) return emptyList()
 
         files.forEach { file ->
             try {
-                // 加载配置文件
                 val config = Configuration.loadFromFile(file, Type.YAML)
-
-                // 3. 遍历根节点的每一个 Key (每个 Key 就是一个属性 ID)
                 config.getKeys(false).forEach { key ->
                     try {
-                        // ✅ 获取属性配置节 (ConfigurationSection)
                         val section = config.getConfigurationSection(key)
-
                         if (section != null) {
-                            // 调用修复后的方法
                             val attribute = loadAttributeFromSection(key, section)
                             if (attribute != null) {
                                 attributes.add(attribute)
@@ -74,58 +61,65 @@ object AttributeLoader {
     }
 
     /**
-     * 准备文件夹并生成示例资源
-     * (移除 runningResources 逻辑，改为检测文件夹为空则生成)
-     */
-    private fun prepareFolderAndResources() {
-        if (!dataAttributesFolder.exists()) {
-            dataAttributesFolder.mkdirs()
-        }
-
-        // 如果文件夹里没有 yml 文件，生成默认示例
-        val ymlFiles = dataAttributesFolder.listFiles { _, name -> name.endsWith(".yml") }
-        if (ymlFiles.isNullOrEmpty()) {
-            createExampleConfigs()
-        }
-    }
-
-    /**
-     * ✅ 修复核心点：参数类型改为 ConfigurationSection
-     * 这样既可以接收 Configuration 对象，也可以接收 getConfigurationSection 返回的对象
+     * 解析配置节并创建属性实例
      */
     private fun loadAttributeFromSection(key: String, section: ConfigurationSection): BaseAttribute? {
-        // 读取配置
         val typeStr = section.getString("type", "OTHER")!!.uppercase()
         val type = try { AttributeType.valueOf(typeStr) } catch (e: Exception) { AttributeType.OTHER }
-
         val priority = section.getInt("priority", 0)
         val display = section.getString("display", key) ?: key
-
-        // 读取别名列表
         val names = section.getStringList("names").takeIf { it.isNotEmpty() } ?: listOf(key)
-
-        // 行为标识符
         val behavior = section.getString("behavior", "default") ?: "default"
+        val attributeTags = section.getStringList("tags").map { it.uppercase() }
 
-        // 创建匿名内部类实例
-        return object : BaseAttribute(key, names, type, priority) {
+        return object : BaseAttribute(key, names, type, priority, attributeTags) {
             override fun getDisplayName(): String = display.replace("&", "§")
 
             override fun onAttack(damageData: DamageData, value: Double, extraValue: Double) {
-                handleBehavior(behavior, damageData, value)
+                // 1. 注入标签
+                this.tags.forEach { damageData.addTag(it) }
+
+                // 2. 托管给行为处理器
+                AttributeBehaviors.handleAttack(behavior, damageData, value)
             }
 
             override fun onDefend(damageData: DamageData, value: Double, extraValue: Double) {
-                if (behavior == "defend" || behavior == "reduce_damage") {
-                    damageData.reduceDamage(value)
+                // 1. 标签校验
+                if (this.tags.isNotEmpty()) {
+                    if (this.tags.none { damageData.hasTag(it) }) return
+                }
+
+                // 2. 托管给行为处理器
+                AttributeBehaviors.handleDefend(behavior, damageData, value)
+            }
+
+            override fun onUpdate(entity: LivingEntity, value: Double) {
+                // 最大生命值处理
+                if (key == "max_health" || behavior == "add_health") {
+                    val base = 20.0 // 默认血量，或者从 entity.getAttribute(GENERIC_MAX_HEALTH).baseValue 获取
+                    val finalVal = base + value
+
+                    val attrInstance = entity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH)
+                    if (attrInstance != null && attrInstance.baseValue != finalVal) {
+                        attrInstance.baseValue = finalVal
+                        // 可选：如果是回血，可以在这里做
+                    }
+                }
+
+                // 移动速度处理
+                if (key == "move_speed") {
+                    // Bukkit 默认 walkSpeed 是 0.2
+                    // 假设 value 是百分比，比如 10 代表增加 10%
+                    val defaultSpeed = 0.2f
+                    val newSpeed = (defaultSpeed * (1 + value / 100.0)).toFloat().coerceIn(0.0f, 1.0f)
+                    if (entity is org.bukkit.entity.Player) {
+                        entity.walkSpeed = newSpeed
+                    }
                 }
             }
         }
     }
 
-    /**
-     * 简单的行为处理器
-     */
     private fun handleBehavior(behavior: String, damageData: DamageData, value: Double) {
         when (behavior) {
             "add_damage" -> damageData.addDamage(value)
@@ -141,61 +135,81 @@ object AttributeLoader {
         }
     }
 
-    /**
-     * 重新加载
-     */
-    fun reloadAttributes(): List<BaseAttribute> {
-        console().sendMessage("§e[AttributeLoader] §f正在重载属性配置...")
-        return loadAttributesFromFolder()
+    private fun prepareFolderAndResources() {
+        if (!dataAttributesFolder.exists()) dataAttributesFolder.mkdirs()
+        val ymlFiles = dataAttributesFolder.listFiles { _, name -> name.endsWith(".yml") }
+        if (ymlFiles.isNullOrEmpty()) createExampleConfigs()
     }
 
     /**
-     * 创建硬编码的示例配置
+     * 生成包含 Tags 的示例配置
      */
     private fun createExampleConfigs() {
-        val file = File(dataAttributesFolder, "example_attributes.yml")
+        val file = File(dataAttributesFolder, "example_combat.yml")
         if (!file.exists()) {
-            // 使用 UTF-8 写入防止乱码
             file.writeText("""
 # ==========================================
-#         AttributeCore 属性配置文件
+#         定向伤害与防御配置示例
 # ==========================================
-# 可以在一个文件中定义多个属性
-# 根节点名称即为属性ID (key)
 
-# --- 攻击力 ---
-attack_damage:
+# 物理攻击：带有 PHYSICAL 标签
+physical_attack:
   type: ATTACK
-  display: "&c攻击力"
+  display: "&f物理攻击"
   priority: 10
   behavior: "add_damage"
+  tags: 
+    - "PHYSICAL"
   names:
-    - "攻击力"
     - "物理攻击"
-    - "Damage"
 
-# --- 暴击率 ---
-crit_rate:
-  type: ATTACK
-  display: "&6暴击率"
-  priority: 5
-  behavior: "crit"
-  names:
-    - "暴击率"
-    - "Crit"
-
-# --- 防御力 ---
-defense:
+# 物理防御：只减少带有 PHYSICAL 标签的伤害
+physical_defense:
   type: DEFENSE
-  display: "&9防御力"
+  display: "&f物理防御"
   priority: 10
   behavior: "reduce_damage"
+  tags: 
+    - "PHYSICAL"
   names:
-    - "防御力"
-    - "护甲"
-    - "Defense"
+    - "物理防御"
+
+# 火焰攻击：带有 FIRE 标签
+fire_attack:
+  type: ATTACK
+  display: "&c火焰攻击"
+  priority: 10
+  behavior: "add_damage"
+  tags: 
+    - "FIRE"
+  names:
+    - "火焰攻击"
+
+# 火焰抗性：只减少带有 FIRE 标签的伤害
+fire_resistance:
+  type: DEFENSE
+  display: "&e火焰抗性"
+  priority: 10
+  behavior: "reduce_damage"
+  tags: 
+    - "FIRE"
+  names:
+    - "火焰抗性"
+
+# 全域防御：没有标签，对所有伤害生效
+global_defense:
+  type: DEFENSE
+  display: "&7全域防御"
+  priority: 5
+  behavior: "reduce_damage"
+  names:
+    - "全域防御"
             """.trimIndent(), StandardCharsets.UTF_8)
-            console().sendMessage("§e[AttributeLoader] §f已生成默认示例文件: example_attributes.yml")
         }
+    }
+
+    fun reloadAttributes(): List<BaseAttribute> {
+        console().sendMessage("§e[AttributeLoader] §f正在重载属性配置...")
+        return loadAttributesFromFolder()
     }
 }
