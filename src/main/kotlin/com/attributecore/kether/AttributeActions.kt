@@ -2,7 +2,6 @@ package com.attributecore.kether
 
 import com.attributecore.data.DamageData
 import com.attributecore.manager.ShieldManager
-import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import taboolib.common5.Coerce
 import taboolib.module.kether.*
@@ -88,20 +87,6 @@ object AttributeActions {
                         // ✅ 先将 Any? 转换为 String，再调用 replace
                         val message = text?.toString() ?: return@thenAccept
                         script().sender?.sendMessage(message.replace("&", "§"))
-                    }
-                }
-            }
-
-            case("heal") {
-                val targetAction = it.nextAction<LivingEntity>()
-                val amountAction = it.nextAction<Double>()
-                actionNow {
-                    // 异步运行获取目标和数值
-                    run(targetAction).thenCombine(run(amountAction)) { target, amount ->
-                        if (target is LivingEntity) {
-                            val maxHealth = target.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH)?.value ?: 20.0
-                            target.health = (target.health + Coerce.toDouble(amount)).coerceAtMost(maxHealth)
-                        }
                     }
                 }
             }
