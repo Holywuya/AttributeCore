@@ -38,9 +38,6 @@ object AttributeManager {
 
         // 3. 初始化护盾系统
         ShieldManager.init()
-
-        // 4. 启动定时任务
-        startUpdateTask()
     }
 
     fun reloadAttributes() {
@@ -64,6 +61,18 @@ object AttributeManager {
 
     // --- API 方法 ---
 
+    /**
+     * 清空特定实体的 API 基础属性缓存
+     * 防止在怪物重载或重复触发生成事件时属性叠加
+     */
+    fun clearApiAttributes(uuid: UUID) {
+        apiAttributeCache.remove(uuid)
+    }
+
+    /**
+     * 设置实体的基础属性
+     * 修改建议：保持累加逻辑（方便多个插件同时注入），但依赖上面的 clear 方法来控制生命周期
+     */
     fun setApiAttribute(uuid: UUID, key: String, value: Double) {
         val map = apiAttributeCache.getOrPut(uuid) { mutableMapOf() }
         val current = map.getOrDefault(key, 0.0)
@@ -142,21 +151,22 @@ object AttributeManager {
         }
     }
 
-    // 解析范围值 "10-20"
     fun extractValueRange(lore: String): DoubleArray {
+        // 过滤掉颜色符号，只保留数字、小数点和连字符
+        val cleanLore = lore.replace("§[0-9a-fk-or]".toRegex(), "")
+
+        // 匹配范围：10-20
         val rangeRegex = "(\\d+(\\.\\d+)?)\\s*-\\s*(\\d+(\\.\\d+)?)".toRegex()
-        val rangeMatch = rangeRegex.find(lore)
+        val rangeMatch = rangeRegex.find(cleanLore)
         if (rangeMatch != null) {
             val v1 = rangeMatch.groupValues[1].toDoubleOrNull() ?: 0.0
             val v2 = rangeMatch.groupValues[3].toDoubleOrNull() ?: 0.0
             return doubleArrayOf(Math.min(v1, v2), Math.max(v1, v2))
         }
-        val singleMatch = "\\d+(\\.\\d+)?".toRegex().find(lore)
+
+        // 匹配单值（支持前面的 + 号）
+        val singleMatch = "(\\d+(\\.\\d+)?)".toRegex().find(cleanLore)
         val v = singleMatch?.value?.toDoubleOrNull() ?: 0.0
         return doubleArrayOf(v, v)
-    }
-
-    private fun startUpdateTask() {
-        submit(period = 100) { Bukkit.getOnlinePlayers().forEach { update(it) } }
     }
 }

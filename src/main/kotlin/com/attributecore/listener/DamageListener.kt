@@ -28,10 +28,6 @@ object DamageListener {
         // 2. 获取防御者
         val defender = e.entity as? LivingEntity ?: return
 
-        // 3. 实时刷新双方属性 (扫描装备、NBT、API数据)
-        AttributeManager.update(attacker)
-        AttributeManager.update(defender)
-
         // 4. 获取属性缓存容器
         val attackData = AttributeManager.getData(attacker)
         val defenceData = AttributeManager.getData(defender)

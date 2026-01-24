@@ -116,8 +116,6 @@ object ShieldManager {
                         // ✅ 使用配置文件的恢复百分比
                         val regen = max * CoreConfig.shieldRegenSpeed
                         modifyShield(p.uniqueId, regen)
-
-
                     }
                 }
             }

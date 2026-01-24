@@ -18,18 +18,15 @@ object MythicMobsListener {
         val entity = event.entity
         val config = event.mobType.config
 
+        AttributeManager.clearApiAttributes(entity.uniqueId)
 
-        var attrList = config.getStringList("AttributeCore")
-        if (attrList.isEmpty()) {
-            attrList = config.getStringList("Attributes")
-        }
-
-        if (attrList.isEmpty()) return
+        var list = config.getStringList("SX-Attribute")
+        if (list.isEmpty()) list = config.getStringList("Attributes")
+        if (list.isEmpty()) return
 
         var hasAttribute = false
 
-        attrList.forEach { line ->
-            // 解析 "属性名: 数值" 或 "属性名: min-max"
+        list.forEach { line ->
             val split = line.split(":")
             if (split.size >= 2) {
                 val name = split[0].trim()
@@ -37,13 +34,11 @@ object MythicMobsListener {
                 val value = parseRandomValue(valueStr)
 
                 if (value != 0.0) {
-                    // 匹配属性
                     val attribute = AttributeManager.getAttributes().find { attr ->
                         attr.key == name || attr.names.contains(name)
                     }
 
                     if (attribute != null) {
-                        // ✅ 调用 Manager 的 API 存入数据 (内存操作)
                         AttributeManager.setApiAttribute(entity.uniqueId, attribute.key, value)
                         hasAttribute = true
                     }
@@ -51,8 +46,8 @@ object MythicMobsListener {
             }
         }
 
-        // 如果有属性，立即刷新一次以应用
         if (hasAttribute) {
+            // 立即刷新数据
             AttributeManager.update(entity as org.bukkit.entity.LivingEntity)
         }
     }
