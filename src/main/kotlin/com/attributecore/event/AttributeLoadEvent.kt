@@ -28,9 +28,6 @@ object AttributeLoader {
      */
     fun loadAttributesFromFolder(): List<BaseAttribute> {
         val attributes = mutableListOf<BaseAttribute>()
-
-        prepareFolderAndResources()
-
         val files = dataAttributesFolder.listFiles { _, name -> name.endsWith(".yml") }
         if (files.isNullOrEmpty()) return emptyList()
 
@@ -63,6 +60,7 @@ object AttributeLoader {
     /**
      * 解析配置节并创建属性实例
      */
+
     private fun loadAttributeFromSection(key: String, section: ConfigurationSection): BaseAttribute? {
         val typeStr = section.getString("type", "OTHER")!!.uppercase()
         val type = try { AttributeType.valueOf(typeStr) } catch (e: Exception) { AttributeType.OTHER }
@@ -94,28 +92,8 @@ object AttributeLoader {
             }
 
             override fun onUpdate(entity: LivingEntity, value: Double) {
-                // 最大生命值处理
-                if (key == "max_health" || behavior == "add_health") {
-                    val base = 20.0 // 默认血量，或者从 entity.getAttribute(GENERIC_MAX_HEALTH).baseValue 获取
-                    val finalVal = base + value
 
-                    val attrInstance = entity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH)
-                    if (attrInstance != null && attrInstance.baseValue != finalVal) {
-                        attrInstance.baseValue = finalVal
-                        // 可选：如果是回血，可以在这里做
-                    }
-                }
-
-                // 移动速度处理
-                if (key == "move_speed") {
-                    // Bukkit 默认 walkSpeed 是 0.2
-                    // 假设 value 是百分比，比如 10 代表增加 10%
-                    val defaultSpeed = 0.2f
-                    val newSpeed = (defaultSpeed * (1 + value / 100.0)).toFloat().coerceIn(0.0f, 1.0f)
-                    if (entity is org.bukkit.entity.Player) {
-                        entity.walkSpeed = newSpeed
-                    }
-                }
+                AttributeBehaviors.handleUpdate(entity, key, behavior, value)
             }
         }
     }
@@ -133,83 +111,5 @@ object AttributeLoader {
                 }
             }
         }
-    }
-
-    private fun prepareFolderAndResources() {
-        if (!dataAttributesFolder.exists()) dataAttributesFolder.mkdirs()
-        val ymlFiles = dataAttributesFolder.listFiles { _, name -> name.endsWith(".yml") }
-        if (ymlFiles.isNullOrEmpty()) createExampleConfigs()
-    }
-
-    /**
-     * 生成包含 Tags 的示例配置
-     */
-    private fun createExampleConfigs() {
-        val file = File(dataAttributesFolder, "example_combat.yml")
-        if (!file.exists()) {
-            file.writeText("""
-# ==========================================
-#         定向伤害与防御配置示例
-# ==========================================
-
-# 物理攻击：带有 PHYSICAL 标签
-physical_attack:
-  type: ATTACK
-  display: "&f物理攻击"
-  priority: 10
-  behavior: "add_damage"
-  tags: 
-    - "PHYSICAL"
-  names:
-    - "物理攻击"
-
-# 物理防御：只减少带有 PHYSICAL 标签的伤害
-physical_defense:
-  type: DEFENSE
-  display: "&f物理防御"
-  priority: 10
-  behavior: "reduce_damage"
-  tags: 
-    - "PHYSICAL"
-  names:
-    - "物理防御"
-
-# 火焰攻击：带有 FIRE 标签
-fire_attack:
-  type: ATTACK
-  display: "&c火焰攻击"
-  priority: 10
-  behavior: "add_damage"
-  tags: 
-    - "FIRE"
-  names:
-    - "火焰攻击"
-
-# 火焰抗性：只减少带有 FIRE 标签的伤害
-fire_resistance:
-  type: DEFENSE
-  display: "&e火焰抗性"
-  priority: 10
-  behavior: "reduce_damage"
-  tags: 
-    - "FIRE"
-  names:
-    - "火焰抗性"
-
-# 全域防御：没有标签，对所有伤害生效
-global_defense:
-  type: DEFENSE
-  display: "&7全域防御"
-  priority: 5
-  behavior: "reduce_damage"
-  names:
-    - "全域防御"
-            """.trimIndent(), StandardCharsets.UTF_8)
-        }
-    }
-
-    fun reloadAttributes(): List<BaseAttribute> {
-        console().sendMessage("§e[AttributeLoader] §f正在重载属性配置...")
-        return loadAttributesFromFolder()
     }
 }

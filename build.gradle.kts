@@ -18,6 +18,7 @@ taboolib {
         install(BukkitUtil)
         install(DatabasePlayer)
         install(BukkitNMSItemTag)
+        install(Kether)
     }
     description {
         name = "AttributeCore"
