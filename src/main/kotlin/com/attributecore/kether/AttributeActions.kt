@@ -59,7 +59,7 @@ object AttributeActions {
                                     ?: script().sender?.castSafely<Player>()
 
                                 player?.let { p ->
-                                    // ✅ 使用 Coerce 转换为 Double
+                                    // 使用 Coerce 转换为 Double
                                     ShieldManager.modifyShield(p.uniqueId, Coerce.toDouble(value))
                                 }
                             }
