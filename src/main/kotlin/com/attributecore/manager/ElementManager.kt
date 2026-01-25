@@ -3,6 +3,7 @@ package com.attributecore.manager
 import com.attributecore.data.DamageData
 import com.attributecore.data.ElementAura
 import com.attributecore.event.AttributeBehaviors
+import com.attributecore.event.CoreConfig
 import com.attributecore.event.ReactionLoader
 import org.bukkit.entity.LivingEntity
 import java.util.*
@@ -41,7 +42,7 @@ object ReactionManager {
         // 4. 检查 ICD (防止同一秒触发几十次超载导致卡死)
         val entityICD = icdMap.getOrPut(uuid) { mutableMapOf() }
         val now = System.currentTimeMillis()
-        if (now - (entityICD[reaction.id] ?: 0) < 500) return null // 同种反应 0.5s 冷却
+        if (now - (entityICD[reaction.id] ?: 0) < CoreConfig.reactionIcd) return null // 同种反应 0.5s 冷却
 
         // 5. 执行反应行为
         entityICD[reaction.id] = now

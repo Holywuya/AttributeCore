@@ -23,7 +23,7 @@ object ReactionLoader {
         if (!file.exists()) releaseResourceFile("reactions.yml")
         val conf = Configuration.loadFromFile(file, Type.YAML)
 
-        auraDuration = conf.getLong("aura_duration", 100L)
+        auraDuration = CoreConfig.auraDuration
         reactionCache.clear()
 
         val section = conf.getConfigurationSection("reactions") ?: return

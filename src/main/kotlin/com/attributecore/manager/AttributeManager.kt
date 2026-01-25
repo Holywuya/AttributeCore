@@ -83,6 +83,7 @@ object AttributeManager {
         entityDataCache.remove(uuid)
         apiAttributeCache.remove(uuid)
         ShieldManager.removeData(uuid)
+        ReactionManager.clear(uuid)
     }
 
     fun getAttributes() = attributes.sortedBy { it.priority }

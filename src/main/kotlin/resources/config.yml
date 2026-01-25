@@ -19,6 +19,13 @@ shield:
   # 每秒恢复最大护盾的百分比 (0.05 = 5%)
   regen_speed: 0.05
 
+# 元素系统设置
+elements:
+  # 附着持续时间 (tick)
+  aura_duration: 100
+  # 反应内置冷却 (ms)
+  reaction_icd: 500
+
 # 更新设置
 update:
   # 属性刷新频率 (单位: tick, 20tick = 1s)
