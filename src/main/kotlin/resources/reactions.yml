@@ -1,0 +1,28 @@
+# ============================================
+#          元素反应系统配置 (Reactions)
+# ============================================
+
+# 元素附着持续时间 (tick)
+aura_duration: 100
+
+reactions:
+  # 反应 ID
+  vaporize:
+    display: "&b&l蒸发"
+    elements: ["FIRE", "WATER"]
+    # 触发时运行的 Behavior (对应 behaviors/ 文件夹)
+    behavior: "reaction_vaporize"
+    # 反应后是否清除附着元素
+    consume: true
+
+  overloaded:
+    display: "&c&l超载"
+    elements: ["FIRE", "LIGHTNING"]
+    behavior: "reaction_overloaded"
+    consume: true
+
+  frozen:
+    display: "&f&l冻结"
+    elements: ["WATER", "ICE"]
+    behavior: "reaction_frozen"
+    consume: true
