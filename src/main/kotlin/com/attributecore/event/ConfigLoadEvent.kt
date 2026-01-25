@@ -1,5 +1,6 @@
 package com.attributecore.event
 
+import taboolib.common.platform.function.console
 import taboolib.module.chat.colored
 import taboolib.module.configuration.Config
 import taboolib.module.configuration.ConfigNode
@@ -27,6 +28,9 @@ object CoreConfig {
     @ConfigNode("combat.armor_k_value")
     var armorK = 400.0
 
+    /** 默认基础暴击倍率 (1.0 = 100%伤害, 2.0 = 200%伤害) */
+    @ConfigNode("combat.default_crit_multiplier")
+    var defaultCritMultiplier = 2.0
 
     // ================= [ 护盾设置 ] =================
 
@@ -56,4 +60,11 @@ object CoreConfig {
     @ConfigNode("debug")
     var debug = false
 
+    /**
+     * 手动重载配置逻辑（可选）
+     */
+    fun reload() {
+        conf.reload()
+        console().sendMessage("${prefix} &a配置文件已重载！")
+    }
 }

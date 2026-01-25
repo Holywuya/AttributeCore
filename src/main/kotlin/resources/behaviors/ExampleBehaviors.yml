@@ -2,18 +2,6 @@
 #          自定义行为脚本 (Kether)
 # ============================================
 
-# 自定义暴击逻辑
-# 这里的 &value 是装备上读取到的数值 (如 20 代表 20% 几率)
-custom_crit: |-
-  if ( random 0 100 <= &value ) then {
-    # 增加 100% 伤害倍率 (即双倍伤害)
-    ac damage mult 2.0
-    # 播放声音
-    ac sound "ENTITY_PLAYER_ATTACK_CRIT"
-    # 提示玩家
-    actionbar "&6&lCRITICAL! &7造成了双倍伤害" to &attacker
-  }
-
 # 示例：吸血脚本
 vampire_logic: |-
   # 计算伤害的 10% 作为回复量

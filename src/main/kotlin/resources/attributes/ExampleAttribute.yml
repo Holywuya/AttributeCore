@@ -31,22 +31,28 @@ crit_chance:
   type: ATTACK
   display: "&6暴击率"
   behavior: "crit"
-  names: ["暴击率"]
+  priority: 100 # 暴击判定建议优先级高一点
 
 # 暴击伤害
 crit_damage:
   type: ATTACK
   display: "&c暴击伤害"
   behavior: "crit_damage"
-  names: ["暴击伤害", "CritDamage"]
+  priority: 110 # 暴伤加成在判定之后
 
-# 暴击率 (脚本行为)
-crit_chance_kether:
-  type: ATTACK
-  display: "&6暴击率_kether"
-  names: ["暴击率_kether", "_kether"]
-  priority: 5
-  behavior: "custom_crit" # 调用 behaviors 文件夹中的脚本
+# 抗暴 (防御属性)
+crit_resistance:
+  type: DEFENSE
+  display: "&e抗暴几率"
+  behavior: "crit_resistance"
+  priority: 10
+
+# 暴击减伤 (防御属性)
+crit_resilience:
+  type: DEFENSE
+  display: "&7暴击减伤"
+  behavior: "crit_resilience"
+  priority: 10
 
 # 最大生命值 (更新回调)
 max_health:

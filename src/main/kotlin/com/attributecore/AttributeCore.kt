@@ -1,6 +1,7 @@
 package com.attributecore
 
 import com.attributecore.manager.AttributeExpansion
+import com.attributecore.manager.AttributeManager
 import org.bukkit.Bukkit
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
@@ -11,7 +12,7 @@ object AttributeCore : Plugin() {
         info("§a[AttributeCore] 插件正在启用...")
 
         // 初始化属性管理器
-        com.attributecore.manager.AttributeManager.init()
+        AttributeManager.init()
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             info("[AttributeCore] 检测到PlaceholderAPI，已注册")

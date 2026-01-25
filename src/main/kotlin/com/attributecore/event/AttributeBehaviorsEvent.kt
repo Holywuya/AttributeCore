@@ -35,14 +35,28 @@ object AttributeBehaviors {
             data.setDamageMultiplier(1.0 + (value / 100.0))
         }
 
+        // --- Attack Behaviors ---
+
+        // 暴击率 (改为调用 rollCrit)
         registerAttack("crit") { d, v, _ ->
-            if (ThreadLocalRandom.current().nextDouble(100.0) < v) {
-                d.isCrit = true
-            }
+            d.rollCrit(v)
         }
 
+        // 暴击伤害
         registerAttack("crit_damage") { d, v, _ ->
             d.addCritDamage(v)
+        }
+
+        // --- Defend Behaviors ---
+
+        // 抗暴率 (降低被暴击的几率)
+        registerDefend("crit_resistance") { d, v, _ ->
+            d.addCritResistance(v)
+        }
+
+        // 暴击减伤 (降低暴击触发时的伤害)
+        registerDefend("crit_resilience") { d, v, _ ->
+            d.addCritResilience(v)
         }
 
         registerAttack("penetrate_fixed") { data, value, _ ->
@@ -62,21 +76,6 @@ object AttributeBehaviors {
             }
         }
 
-        // 元素注入行为 (核心逻辑)
-        registerAttack("element_apply") { data, value, attrTags ->
-            // 从当前触发此行为的属性标签中寻找 ELEMENT_ 开头的标签
-            val element = attrTags.firstOrNull { it.startsWith("ELEMENT_") }?.replace("ELEMENT_", "")
-
-            if (element != null) {
-                // 调用反应管理器处理附着与反应
-                val reactionName = ReactionManager.handleElement(data.defender, element, data)
-
-                // 如果触发了反应，提示攻击者
-                if (reactionName != null) {
-                    data.attacker.sendMessage("§f[元素反应] $reactionName")
-                }
-            }
-        }
 
         // --- 注册原生防御行为 ---
         registerDefend("defend") { data, value, _ -> data.addDefenseScore(value) }

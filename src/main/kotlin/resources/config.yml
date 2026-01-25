@@ -10,7 +10,8 @@ combat:
   # 护甲公式中的 K 值。 K / (Armor + K)
   # 值越大，护甲越不容易达到高减伤。建议范围 300-500
   armor_k_value: 400.0
-
+  # 默认暴击倍率
+  default_crit_multiplier: 2.0
 
 # 护盾系统设置
 shield:
@@ -21,16 +22,15 @@ shield:
 
 # 元素系统设置
 elements:
-  # 附着持续时间 (tick)
+  # 元素附着在怪物身上持续的时间 (100tick = 5s)
   aura_duration: 100
-  # 反应内置冷却 (ms)
+  # 同一个怪物触发同种反应的内置冷却 (毫秒)
   reaction_icd: 500
 
 # 更新设置
 update:
-  # 属性刷新频率 (单位: tick, 20tick = 1s)
-  # 越低实时性越好，但消耗性能越多
+  # 属性刷新频率 (单位: tick)
   refresh_interval: 20
 
-# 调试模式 (开启后控制台会输出详细的计算过程)
+# 调试模式
 debug: false

@@ -4,8 +4,9 @@ import com.attributecore.data.AttributeData
 import com.attributecore.data.AttributeType
 import com.attributecore.data.attribute.BaseAttribute
 import com.attributecore.event.AttributeBehaviors
-import com.attributecore.event.AttributeLoader
 import com.attributecore.event.BehaviorLoader
+import com.attributecore.event.CoreConfig
+import com.attributecore.event.AttributeLoader
 import com.attributecore.util.* // ConditionChecker, NBTUtils
 import org.bukkit.Bukkit
 import org.bukkit.entity.LivingEntity
@@ -38,6 +39,9 @@ object AttributeManager {
 
         // 3. 初始化护盾系统
         ShieldManager.init()
+
+        // 4. 启动自清理
+        startCleanupTask()
     }
 
     fun reloadAttributes() {
@@ -82,8 +86,8 @@ object AttributeManager {
     fun removeData(uuid: UUID) {
         entityDataCache.remove(uuid)
         apiAttributeCache.remove(uuid)
-        ShieldManager.removeData(uuid)
-        ReactionManager.clear(uuid)
+        ShieldManager.removeData(uuid) // 之前写的护盾管理器
+        ReactionManager.clear(uuid)  // 之前写的元素反应管理器
     }
 
     fun getAttributes() = attributes.sortedBy { it.priority }
@@ -169,5 +173,34 @@ object AttributeManager {
         val singleMatch = "(\\d+(\\.\\d+)?)".toRegex().find(cleanLore)
         val v = singleMatch?.value?.toDoubleOrNull() ?: 0.0
         return doubleArrayOf(v, v)
+    }
+
+    /**
+     * 定期巡检：清理已经不在世界上的实体数据
+     */
+    private fun startCleanupTask() {
+        // 每 5 分钟 (6000 ticks) 运行一次，不影响性能
+        submit(period = 6000, async = true) {
+            val removedCount = arrayOf(0)
+
+            // 获取所有缓存的 UUID
+            val cachedUUIDs = entityDataCache.keys.toMutableSet()
+            cachedUUIDs.addAll(apiAttributeCache.keys)
+
+            cachedUUIDs.forEach { uuid ->
+                // 检查该实体是否在线/存在
+                val entity = Bukkit.getEntity(uuid)
+
+                // 如果实体不存在，或者已经死亡（且未被监听器捕获）
+                if (entity == null || !entity.isValid || entity.isDead) {
+                    removeData(uuid)
+                    removedCount[0]++
+                }
+            }
+
+            if (removedCount[0] > 0 && CoreConfig.debug) {
+                info("§8[内存管理] §7自动清理了 ${removedCount[0]} 条失效的实体属性缓存。")
+            }
+        }
     }
 }
