@@ -32,6 +32,9 @@ object CoreConfig {
     @ConfigNode("combat.default_crit_multiplier")
     var defaultCritMultiplier = 2.0
 
+    @ConfigNode("combat_power.default_weight")
+    var cpDefaultWeight = 1.0
+
     // ================= [ 护盾设置 ] =================
 
     @ConfigNode("shield.auto_regen")
@@ -60,11 +63,4 @@ object CoreConfig {
     @ConfigNode("debug")
     var debug = false
 
-    /**
-     * 手动重载配置逻辑（可选）
-     */
-    fun reload() {
-        conf.reload()
-        console().sendMessage("${prefix} &a配置文件已重载！")
-    }
 }

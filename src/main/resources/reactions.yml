@@ -1,0 +1,15 @@
+reactions:
+  # 反应 ID: 蒸发
+  vaporize:
+    display: "&b&l蒸发"
+    elements: ["FIRE", "WATER"] # 火 + 水
+    # 触发时运行的 JS 脚本文件名 (在 scripts/ 文件夹下)
+    behavior: "react_vaporize"
+    consume: true # 反应后是否移除附着
+
+  # 反应 ID: 超载
+  overloaded:
+    display: "&c&l超载"
+    elements: ["FIRE", "LIGHTNING"] # 火 + 雷
+    behavior: "react_overloaded"
+    consume: true

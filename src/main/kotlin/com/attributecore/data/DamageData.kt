@@ -6,122 +6,113 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import java.util.concurrent.ThreadLocalRandom
 
 /**
- * 伤害计算上下文
- * 核心逻辑：基础加伤 -> 穿甲/护甲过滤 -> 阶梯暴击 -> 最终倍率
+ * 伤害计算上下文 (多类型伤害桶架构)
  */
 class DamageData(
     val attacker: LivingEntity,
     val defender: LivingEntity,
     val event: EntityDamageByEntityEvent
 ) {
-    /** 原始伤害（Bukkit事件的基础伤害） */
+    /** 原始伤害（Bukkit事件的初始伤害），默认归入物理桶 */
     val originalDamage = event.damage
 
-    /** 基础伤害增加值（固定值加成） */
-    private var damageBonus = 0.0
-
-    /** 最终伤害倍率（全局百分比加成） */
+    /** 伤害倍率（全局） */
     private var damageMultiplier = 1.0
 
-    /** 伤害标签系统（用于元素反应和定向防御） */
+    /** 伤害标签系统 */
     val tags = mutableSetOf<String>()
 
-    // ================= [ 暴击系统 (Warframe 风格) ] =================
+    // ================= [ 多类型伤害桶 ] =================
 
-    /** 暴击等级：0=无, 1=黄, 2=橙, 3=红, 4+=高阶红 */
+    /** 伤害桶：类型 -> 伤害数值 (默认包含事件原始物理伤害) */
+    private val damageBuckets = mutableMapOf<String, Double>("PHYSICAL" to originalDamage)
+
+    /** 抗性桶：类型 -> 抗性百分比 (0-100) */
+    private val resistanceBuckets = mutableMapOf<String, Double>()
+
+    // ================= [ 暴击系统 ] =================
     var critTier = 0
-
-    /** 额外暴伤百分比 (例如 50.0 代表 +50% 暴伤) */
     private var critMultiplierBonus = 0.0
-
-    /** 抗暴率（直接扣除攻击方的暴击几率） */
     private var critResistance = 0.0
-
-    /** 暴击抗性（降低每一级暴击带来的收益百分比） */
     private var critResilience = 0.0
 
-    // ================= [ 防御与穿甲系统 ] =================
-
-    /** 护甲值（Defense Score） */
+    // ================= [ 物理防御与穿甲系统 ] =================
     private var totalDefenseScore = 0.0
-
-    /** 直接减伤百分比 (0-100) */
-    private var directReductionPercent = 0.0
-
-    /** 固定穿甲（直接忽略 X 点护甲） */
     private var fixedPenetration = 0.0
-
-    /** 百分比穿甲（忽略 X% 的护甲） */
     private var percentPenetration = 0.0
 
-    // ================= [ 逻辑方法 ] =================
+    // ================= [ 方法 ] =================
 
-    fun addDamage(amount: Double) { damageBonus += amount }
     fun setDamageMultiplier(multiplier: Double) { damageMultiplier *= multiplier }
-
     fun addTag(tag: String) = tags.add(tag.uppercase())
-    fun hasTag(tag: String): Boolean = tags.contains(tag.uppercase())
+    fun hasTag(tag: String) = tags.contains(tag.uppercase())
 
-    // 暴击相关
+    /** 向指定类型的桶增加伤害 (如 PHYSICAL, FIRE, WATER) */
+    fun addBucketDamage(type: String, amount: Double) {
+        val t = type.uppercase()
+        damageBuckets[t] = damageBuckets.getOrDefault(t, 0.0) + amount
+    }
+
+    /** 增加指定类型的抗性 (百分比) */
+    fun addBucketResistance(type: String, percent: Double) {
+        val t = type.uppercase()
+        resistanceBuckets[t] = resistanceBuckets.getOrDefault(t, 0.0) + percent
+    }
+
+    // 快捷方法：默认加物理伤害
+    fun addDamage(amount: Double) = addBucketDamage("PHYSICAL", amount)
+    fun addDirectReductionPercent(percent: Double) = addBucketResistance("PHYSICAL", percent)
+
+    // 暴击与穿甲
     fun addCritDamage(value: Double) { critMultiplierBonus += (value / 100.0) }
     fun addCritResistance(value: Double) { critResistance += value }
     fun addCritResilience(value: Double) { critResilience += (value / 100.0) }
-
-    // 防御相关
     fun addDefenseScore(amount: Double) { totalDefenseScore += amount }
-    fun addDirectReductionPercent(percent: Double) { directReductionPercent += percent }
-
-    // 穿甲相关
     fun addFixedPenetration(amount: Double) { fixedPenetration += amount }
     fun addPercentPenetration(percent: Double) { percentPenetration += percent }
 
-    /**
-     * Warframe 阶梯暴击判定逻辑
-     * @param totalChance 攻击方总暴击率 (允许超过 100%)
-     */
     fun rollCrit(totalChance: Double) {
-        // 1. 实际暴击率 = 攻击几率 - 防御抗性
         val actualChance = (totalChance - critResistance).coerceAtLeast(0.0)
-
-        // 2. 计算暴击层级
-        // 例如: 250% -> 基础 2 层 (橙暴)，50% 几率升至 3 层 (红暴)
         val baseTier = (actualChance / 100).toInt()
         val probability = actualChance % 100
-
         val random = ThreadLocalRandom.current().nextDouble(100.0)
         this.critTier = if (random < probability) baseTier + 1 else baseTier
     }
 
     /**
-     * 核心计算公式：汇总所有属性得出最终伤害
+     * 核心计算：多桶独立结算
      */
     fun getFinalDamage(): Double {
-        // 1. 基础攻击力汇总
-        val rawTotalDamage = originalDamage + damageBonus
-
-        // 2. 计算有效护甲 (计算顺序：先算百分比穿甲，再减固定穿甲)
+        // 1. 计算物理护甲的减伤倍率 (K公式)
         val afterPercentArmor = totalDefenseScore * (1.0 - (percentPenetration / 100.0).coerceIn(0.0, 1.0))
         val effectiveDefense = (afterPercentArmor - fixedPenetration).coerceAtLeast(0.0)
-
-        // 3. 计算护甲减伤倍率 (K / (Def + K))
         val k = CoreConfig.armorK
         val armorMultiplier = k / (effectiveDefense + k)
 
-        // 4. 计算直接百分比抗性
-        val resistMultiplier = (1.0 - (directReductionPercent / 100.0)).coerceAtLeast(0.0)
+        var totalBucketDamage = 0.0
 
-        // 5. 计算阶梯暴击倍率
-        // 公式：最终暴伤 = 1 + 层级 * (总暴伤倍率 - 1)
-        val baseCritMult = CoreConfig.defaultCritMultiplier // 来自 config.yml，通常为 2.0
-        val totalCritMultAttr = (baseCritMult + critMultiplierBonus - critResilience).coerceAtLeast(1.1)
+        // 2. 遍历所有伤害桶独立结算
+        damageBuckets.forEach { (type, rawDamage) ->
+            var bucketDamage = rawDamage
 
-        val finalCritMultiplier = if (critTier > 0) {
-            1.0 + critTier * (totalCritMultAttr - 1.0)
-        } else {
-            1.0
+            // 物理伤害应用护甲减免
+            if (type == "PHYSICAL") {
+                bucketDamage *= armorMultiplier
+            }
+
+            // 应用该类型独立抗性
+            val res = resistanceBuckets.getOrDefault(type, 0.0)
+            bucketDamage *= (1.0 - res / 100.0).coerceAtLeast(0.0)
+
+            totalBucketDamage += bucketDamage
         }
 
-        // 6. 最终加乘：(基础总伤) * 护甲系数 * 抗性系数 * 暴击系数 * 全局倍率
-        return (rawTotalDamage * armorMultiplier * resistMultiplier * finalCritMultiplier * damageMultiplier).coerceAtLeast(0.0)
+        // 3. 计算暴击倍率
+        val baseCritMult = CoreConfig.defaultCritMultiplier
+        val totalCritMultAttr = (baseCritMult + critMultiplierBonus - critResilience).coerceAtLeast(1.1)
+        val finalCritMultiplier = if (critTier > 0) 1.0 + critTier * (totalCritMultAttr - 1.0) else 1.0
+
+        // 4. 最终汇总
+        return (totalBucketDamage * finalCritMultiplier * damageMultiplier).coerceAtLeast(0.0)
     }
 }

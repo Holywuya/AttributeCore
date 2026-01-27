@@ -13,6 +13,11 @@ combat:
   # 默认暴击倍率
   default_crit_multiplier: 2.0
 
+combat_power:
+  # 全局默认权重 (如果单个属性里没写 cp，就用这个)
+  default_weight: 1.0
+
+
 # 护盾系统设置
 shield:
   # 护盾自动恢复开关

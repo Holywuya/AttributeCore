@@ -19,6 +19,7 @@ taboolib {
         install(DatabasePlayer)
         install(BukkitNMSItemTag)
         install(Kether)
+        install(JavaScript)
     }
     description {
         name = "AttributeCore"
@@ -26,10 +27,12 @@ taboolib {
             name("Esters")
         }
     }
+    relocate("ink.ptms.um", "com.attributecore.um")
     version { taboolib = "6.2.4-e6c8347" }
 }
 
 repositories {
+    maven("https://nexus.maplex.top/repository/maven-public/")
     maven("https://maven.aliyun.com/repository/public")
     mavenCentral()
 }
@@ -37,9 +40,11 @@ repositories {
 dependencies {
     compileOnly("ink.ptms.core:v12004:12004:mapped")
     compileOnly("ink.ptms.core:v12004:12004:universal")
+    taboo("ink.ptms:um:1.2.1")
     compileOnly(kotlin("stdlib"))
     compileOnly(fileTree("libs"))
 }
+
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"

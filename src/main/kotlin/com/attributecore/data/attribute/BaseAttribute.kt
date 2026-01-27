@@ -17,7 +17,8 @@ abstract class BaseAttribute(
     /** 优先级（影响计算顺序） */
     val priority: Int = 0,
     val tags: List<String> = emptyList(),
-    val element: String? = null
+    val element: String? = null,
+    val combatPower: Double = 1.0
 ) {
 
     /** 获取显示名称 */
