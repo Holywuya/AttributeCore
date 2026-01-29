@@ -16,8 +16,13 @@ function getSettings() {
 
 function runAttack(attr, attacker, entity, handle) {
     var value = handle.getValue();
-    print("[AC-JS-DEBUG] runAttack called: key=" + attr.key + ", value=" + value);
-    print("[AC-JS-DEBUG] attacker type: " + (typeof attacker) + ", has addDamage: " + (typeof attacker.addDamage));
-    attacker.addDamage(value);
-    print("[AC-JS-DEBUG] addDamage called successfully");
+    
+    try {
+        api.tell(attacker.getBukkit(), "[JS] runAttack: key=" + attr.key + ", value=" + value);
+        api.tell(attacker.getBukkit(), "[JS] About to call addDamage with value: " + value);
+        attacker.addDamage(value);
+        api.tell(attacker.getBukkit(), "[JS] addDamage SUCCESS");
+    } catch (e) {
+        api.tell(attacker.getBukkit(), "[JS] ERROR: " + e.message);
+    }
 }
