@@ -32,23 +32,24 @@ class ScriptAttribute(
     }
 
     override fun onAttack(damageData: DamageData, value: Double, extraValue: Double) {
-        // 1. 自动注入元素标签和反应逻辑
         this.tags.forEach { damageData.addTag(it) }
         this.element?.let { el ->
             com.attributecore.manager.ReactionManager.handleElement(damageData.defender, el, damageData)
         }
 
-        // 2. 调用脚本函数 runAttack
+        console().sendMessage("§e[AC-DEBUG] §f调用脚本: key=$key, value=$value")
+        
         try {
             script.invokeFunction(
                 "runAttack",
-                this, // attr
-                ScriptEntity(damageData.attacker), // attacker (包装)
-                ScriptEntity(damageData.defender), // entity (包装)
-                ScriptHandle(damageData, value)    // handle
+                this,
+                ScriptEntity(damageData.attacker),
+                ScriptEntity(damageData.defender),
+                ScriptHandle(damageData, value)
             )
+            console().sendMessage("§a[AC-DEBUG] §f脚本执行成功: key=$key")
         } catch (e: NoSuchMethodException) {
-            // 脚本没写 runAttack，属于正常情况，忽略
+            console().sendMessage("§c[AC-DEBUG] §f脚本 $key 没有 runAttack 函数")
         } catch (e: Exception) {
             console().sendMessage("§c[AttributeCore] 属性脚本 $key 执行 runAttack 时出错: ${e.message}")
             if (CoreConfig.debug) e.printStackTrace()

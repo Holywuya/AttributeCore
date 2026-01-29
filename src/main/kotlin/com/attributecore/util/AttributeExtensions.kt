@@ -53,8 +53,16 @@ fun LivingEntity.setDamage(value: Double) {
 
 fun LivingEntity.addDamage(value: Double) {
     val activeData = DamageContext.getActiveData()
-    if (activeData != null && activeData.attacker == this) {
-        activeData.addDamage(value)
+    taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §faddDamage调用: entity=${this.name}, value=$value, activeData=$activeData")
+    if (activeData != null) {
+        taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §f  attacker=${activeData.attacker.name}, this=${this.name}, match=${activeData.attacker == this}")
+        if (activeData.attacker == this) {
+            activeData.addDamage(value)
+        } else {
+            taboolib.common.platform.function.console().sendMessage("§c[AC-DEBUG] §f  攻击者不匹配，跳过")
+        }
+    } else {
+        taboolib.common.platform.function.console().sendMessage("§c[AC-DEBUG] §f  activeData为null")
     }
 }
 

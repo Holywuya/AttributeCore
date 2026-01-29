@@ -38,7 +38,11 @@ object ItemAttributeParser {
         val tag = item.getItemTag()
         val itemLore = item.itemMeta?.lore ?: emptyList<String>()
 
-        // 使用全局 loreMap 而不是传入的 attributes
+        taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §f解析物品: ${item.type}, lore行数=${itemLore.size}")
+        itemLore.forEachIndexed { index, line -> 
+            taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §f  Lore[$index]: $line")
+        }
+
         attributes.forEach { attr ->
             var range = tag.getDeepRange("$NBT_ROOT.${attr.key}")
             if (range[0] == 0.0 && range[1] == 0.0 && itemLore.isNotEmpty()) {
@@ -47,13 +51,16 @@ object ItemAttributeParser {
                         line.contains("$name:") || line.contains("$name：") || line.contains(name)
                     }
                     if (matchedName != null) {
+                        taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §f  匹配属性: ${attr.key}, name=$matchedName, line=$line")
                         range = extractValueRangeFromLore(line)
+                        taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §f  提取数值: [${range[0]}, ${range[1]}]")
                         if (range[0] != 0.0 || range[1] != 0.0) break
                     }
                 }
             }
             if (range[0] != 0.0 || range[1] != 0.0) {
                 resultMap[attr.key] = range
+                taboolib.common.platform.function.console().sendMessage("§a[AC-DEBUG] §f添加属性: ${attr.key} = [${range[0]}, ${range[1]}]")
             }
         }
         return resultMap

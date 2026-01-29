@@ -13,6 +13,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import taboolib.common.platform.event.SubscribeEvent
 import taboolib.common.platform.function.adaptPlayer
 import taboolib.common.platform.function.console
+import taboolib.platform.util.isAir
 import java.util.concurrent.ThreadLocalRandom
 
 object DamageListener {
@@ -35,20 +36,21 @@ object DamageListener {
         }
 
         try {
-            // 2. 初始化数据
             val attackData = AttributeManager.getData(attacker)
             val defenceData = AttributeManager.getData(defender)
             val damageData = DamageData(attacker, defender, e)
 
-            if (CoreConfig.debug) {
-                console().sendMessage("§7[Debug] §fDamage event: ${attacker.name} -> ${defender.name}, original=${e.damage}")
-                console().sendMessage("§7[Debug] §fAttacker data: ${attackData.getNonZeroAttributes()}")
+            console().sendMessage("§e[AC-DEBUG] §f伤害事件: ${attacker.name} -> ${defender.name}, 原始伤害=${e.damage}")
+            console().sendMessage("§e[AC-DEBUG] §f攻击者属性: ${attackData.getNonZeroAttributes()}")
+            if (attacker is Player) {
+                val mainHand = attacker.inventory.itemInMainHand
+                if (!mainHand.isAir()) {
+                    console().sendMessage("§e[AC-DEBUG] §f主手物品: ${mainHand.type}, lore=${mainHand.itemMeta?.lore}")
+                }
             }
 
-            // 3. 注入计算上下文，这是 "attacker.addDamage()" 能够生效的核心
             DamageContext.setActiveData(damageData)
 
-            // 4. 执行属性循环
             AttributeManager.getAttributes().forEach { attr ->
 
                 // MM 技能过滤
@@ -70,10 +72,7 @@ object DamageListener {
 
                 if (min != 0.0 || max != 0.0) {
                     val roll = if (min == max) min else ThreadLocalRandom.current().nextDouble(Math.min(min, max), Math.max(min, max))
-                    if (CoreConfig.debug) {
-                        console().sendMessage("§7[Debug] §fAttr: ${attr.key}, min=$min, max=$max, roll=$roll")
-                    }
-                    // 执行行为 (Native 或 JS)
+                    console().sendMessage("§e[AC-DEBUG] §f属性: ${attr.key}, 范围=[$min, $max], 随机值=$roll, 即将执行脚本")
                     attr.onAttack(damageData, roll, max)
                 }
 
@@ -85,12 +84,14 @@ object DamageListener {
 
             // 5. 最终结算
             var finalDamage = damageData.getFinalDamage()
+            console().sendMessage("§e[AC-DEBUG] §f最终伤害计算: ${finalDamage} (原始=${e.damage})")
 
             if (damageData.critTier > 0) handleCritFeedback(attacker, defender, damageData.critTier, finalDamage)
 
             if (finalDamage > 0) finalDamage = ShieldManager.absorbDamage(defender, finalDamage)
 
             e.damage = finalDamage
+            console().sendMessage("§a[AC-DEBUG] §f最终应用伤害: ${e.damage}")
 
         } catch (ex: Exception) {
             console().sendMessage("§c[AttributeCore] 战斗结算异常: ${ex.message}")

@@ -111,7 +111,11 @@ class DamageData(
     // ================= [ 快捷方法 ] =================
     
     // 默认加物理伤害
-    fun addDamage(amount: Double) = addBucketDamage("PHYSICAL", amount)
+    fun addDamage(amount: Double) {
+        taboolib.common.platform.function.console().sendMessage("§e[AC-DEBUG] §fDamageData.addDamage: amount=$amount, PHYSICAL(before)=${damageBuckets.getOrDefault("PHYSICAL", 0.0)}")
+        addBucketDamage("PHYSICAL", amount)
+        taboolib.common.platform.function.console().sendMessage("§a[AC-DEBUG] §fDamageData.addDamage: PHYSICAL(after)=${damageBuckets.getOrDefault("PHYSICAL", 0.0)}")
+    }
     
     fun addDirectReductionPercent(percent: Double) = addBucketResistance("PHYSICAL", percent)
     
