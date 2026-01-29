@@ -37,13 +37,14 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    compileOnly("ink.ptms.core:v12004:12004:mapped")
-    compileOnly("ink.ptms.core:v12004:12004:universal")
-    taboo("ink.ptms:um:1.2.1")
-    compileOnly(kotlin("stdlib"))
-    compileOnly(fileTree("libs"))
-}
+ dependencies {
+     compileOnly("ink.ptms.core:v12004:12004:mapped")
+     compileOnly("ink.ptms.core:v12004:12004:universal")
+     taboo("ink.ptms:um:1.2.1")
+     compileOnly(kotlin("stdlib"))
+     compileOnly(fileTree("libs"))
+     taboo("org.openjdk.nashorn:nashorn-core:15.4")
+ }
 
 
 tasks.withType<JavaCompile> {

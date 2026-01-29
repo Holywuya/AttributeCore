@@ -19,7 +19,7 @@ object CoreConfig {
     // ================= [ 基础设置 ] =================
 
     @ConfigNode("prefix")
-    var prefix = "&8[&bAttributeCore&8] &f"
+    val prefix = "&8[&bAttributeCore&8] &f"
         get() = field.colored() // 自动转换颜色代码
 
     // ================= [ 战斗设置 ] =================

@@ -97,7 +97,6 @@ object ShieldManager {
     fun removeData(uuid: UUID) {
         currentShieldMap.remove(uuid)
         maxShieldMap.remove(uuid)
-        ReactionManager.clear(uuid)
     }
 
     /**

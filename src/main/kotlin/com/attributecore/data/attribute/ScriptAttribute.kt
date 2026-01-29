@@ -7,6 +7,7 @@ import com.attributecore.data.AttributeType
 import com.attributecore.data.DamageData
 import org.bukkit.entity.LivingEntity
 import taboolib.common.platform.function.console
+import taboolib.common.platform.function.submit
 import javax.script.Invocable
 
 /**

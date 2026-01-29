@@ -14,12 +14,30 @@ object AttributeCore : Plugin() {
         // 初始化属性管理器
         AttributeManager.init()
 
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            info("[AttributeCore] 检测到PlaceholderAPI，已注册")
-        }
+        // 检测并注册依赖插件
+        detectDependencies()
 
+        info("§a[AttributeCore] 插件启用完成！")
+    }
+
+    override fun onDisable() {
+        info("§c[AttributeCore] 插件已禁用！")
+    }
+
+    private fun detectDependencies() {
+        detectPlaceholderAPI()
+        detectMythicMobs()
+    }
+
+    private fun detectPlaceholderAPI() {
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            info("[AttributeCore] 检测到 PlaceholderAPI，已注册")
+        }
+    }
+
+    private fun detectMythicMobs() {
         if (Bukkit.getPluginManager().getPlugin("MythicMobs") != null) {
-            info("[AttributeCore] 检测到PlaceholderAPI，已注册")
+            info("[AttributeCore] 检测到 MythicMobs，已注册")
             if (Mythic.isLoaded()) {
                 val api = Mythic.API
                 if (api.isLegacy) {
@@ -29,12 +47,5 @@ object AttributeCore : Plugin() {
                 }
             }
         }
-
-
-        info("§a[AttributeCore] 插件启用完成！")
-    }
-
-    override fun onDisable() {
-        info("§c[AttributeCore] 插件已禁用！")
     }
 }

@@ -11,34 +11,44 @@ import org.bukkit.entity.LivingEntity
 import taboolib.common.platform.function.console
 import taboolib.common.platform.function.getDataFolder
 import taboolib.common.platform.function.releaseResourceFile
+import taboolib.common.platform.function.submit
 import taboolib.common5.Coerce
 import java.io.File
-import java.io.FileReader
 import java.util.concurrent.ConcurrentHashMap
 import javax.script.Invocable
-import javax.script.ScriptEngineManager
+import taboolib.common5.compileJS
+import taboolib.common5.scriptEngine
+import taboolib.common.LifeCycle
+import taboolib.common.platform.Awake
 
 object ScriptManager {
 
-    private val manager = ScriptEngineManager()
-    private val folder = File(getDataFolder(), "scripts")
-
-    // 缓存 JS 引擎的可调用接口
-    private val scriptCache = ConcurrentHashMap<String, Invocable>()
-
-    fun init() {
+    @Awake(LifeCycle.ENABLE)
+    fun onEnable() {
+        val folder = dataFolder
         if (!folder.exists()) {
             folder.mkdirs()
-            try { releaseResourceFile("scripts/example_attribute.js", false) } catch (e: Exception) {}
+            try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
         }
     }
 
+    @Awake(LifeCycle.DISABLE)
+    fun onDisable() {
+        scriptCache.clear()
+    }
+
+    private val dataFolder: File by lazy { File(getDataFolder(), "scripts") }
+
+    private val scriptCache = ConcurrentHashMap<String, Invocable>()
+
     fun reload() {
-        // 确保文件夹存在
-        if (!folder.exists()) init()
-        // 这里可以做一些清理工作，但由于我们不缓存 Script 对象（都传给 Attribute 了），
-        // 所以这里主要用于状态重置或日志输出
-        console().sendMessage("§7[AttributeCore] §f正在重置脚本环境...")
+        submit(async = true) {
+            if (!dataFolder.exists()) {
+                dataFolder.mkdirs()
+                try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
+            }
+            console().sendMessage("§7[AttributeCore] §f正在重置脚本环境...")
+        }
     }
 
     /**
@@ -48,30 +58,35 @@ object ScriptManager {
         scriptCache.clear()
         val list = mutableListOf<BaseAttribute>()
 
-        if (!folder.exists()) init()
+        if (!dataFolder.exists()) {
+            dataFolder.mkdirs()
+            try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
+        }
 
         console().sendMessage("§7[AttributeCore] §f正在加载脚本属性...")
 
-        folder.listFiles { _, n -> n.endsWith(".js") }?.forEach { file ->
+        dataFolder.listFiles { _, n -> n.endsWith(".js") }?.forEach { file ->
             try {
-                // 1. 获取引擎
-                val engine = manager.getEngineByName("js")
-                    ?: throw RuntimeException("当前环境不支持 JavaScript")
+                val scriptContent = file.readText()
+                
+                // 1. 注入环境 API
+                scriptEngine.put("api", JavaScriptAPI)
+                scriptEngine.put("Bukkit", org.bukkit.Bukkit::class.java)
 
-                // 2. 注入环境 API
-                engine.put("api", JavaScriptAPI)
-                engine.put("Bukkit", org.bukkit.Bukkit::class.java)
-                // 魔法：把 api 方法提取到全局
-                engine.eval("for (var m in api) { if (typeof api[m] === 'function') { this[m] = api[m].bind(api); } }")
+                // 2. 预编译脚本以提高性能
+                val compiledScript = scriptContent.compileJS()
+                if (compiledScript != null) {
+                    compiledScript.eval()
+                } else {
+                    // 如果编译失败，直接执行
+                    scriptEngine.eval(scriptContent)
+                }
 
-                // 3. 执行脚本
-                engine.eval(FileReader(file))
-
-                val inv = engine as Invocable
+                val inv = scriptEngine as Invocable
                 val scriptId = file.nameWithoutExtension.lowercase()
                 scriptCache[scriptId] = inv
 
-                // 4. 尝试获取属性配置 (getSettings)
+                @Suppress("UNCHECKED_CAST")
                 val settings = try {
                     inv.invokeFunction("getSettings") as? Map<String, Any>
                 } catch (e: NoSuchMethodException) {
@@ -89,7 +104,7 @@ object ScriptManager {
 
             } catch (e: Exception) {
                 console().sendMessage("§c[AttributeCore] 脚本 ${file.name} 加载失败: ${e.message}")
-                e.printStackTrace()
+                ScriptErrorLogger.logError(file.name, e)
             }
         }
         return list
@@ -99,66 +114,63 @@ object ScriptManager {
     //               ✅ 核心修复：添加 invoke 方法
     // ========================================================
 
-    /**
-     * 执行攻击逻辑
-     * ReactionManager 和 ScriptAttribute 会调用此方法
-     */
+    private fun invokeScript(
+        scriptId: String,
+        functionName: String,
+        suppressMissingFunction: Boolean = true,
+        vararg args: Any
+    ) {
+        val inv = scriptCache[scriptId.lowercase()] ?: return
+        try {
+            inv.invokeFunction(functionName, *args)
+        } catch (e: NoSuchMethodException) {
+            if (!suppressMissingFunction) {
+                console().sendMessage("§e[AttributeCore] 脚本 $scriptId 缺少函数: $functionName")
+            }
+        } catch (e: Exception) {
+            handleScriptError(scriptId, functionName, e)
+        }
+    }
+
+    private fun handleScriptError(scriptId: String, functionName: String, error: Exception) {
+        console().sendMessage("§c[AttributeCore] 执行脚本 $scriptId ($functionName) 出错: ${error.message}")
+        ScriptErrorLogger.logRuntimeError(scriptId, functionName, error)
+    }
+
     fun invokeAttack(scriptId: String, attr: BaseAttribute, attacker: LivingEntity, victim: LivingEntity, data: DamageData, value: Double) {
-        val inv = scriptCache[scriptId.lowercase()] ?: return
-        try {
-            // 包装参数，实现拟人化 API
-            inv.invokeFunction(
-                "runAttack",
-                attr,
-                ScriptEntity(attacker),
-                ScriptEntity(victim),
-                ScriptHandle(data, value)
-            )
-        } catch (e: NoSuchMethodException) {
-            // 忽略未定义函数的错误
-        } catch (e: Exception) {
-            console().sendMessage("§c[AttributeCore] 执行脚本 $scriptId (runAttack) 出错: ${e.message}")
-            e.printStackTrace()
-        }
+        invokeScript(
+            scriptId = scriptId,
+            functionName = "runAttack",
+            suppressMissingFunction = true,
+            attr,
+            ScriptEntity(attacker),
+            ScriptEntity(victim),
+            ScriptHandle(data, value)
+        )
     }
 
-    /**
-     * 执行防御逻辑
-     */
     fun invokeDefend(scriptId: String, attr: BaseAttribute, attacker: LivingEntity, victim: LivingEntity, data: DamageData, value: Double) {
-        val inv = scriptCache[scriptId.lowercase()] ?: return
-        try {
-            inv.invokeFunction(
-                "runDefend",
-                attr,
-                ScriptEntity(attacker),
-                ScriptEntity(victim), // 这里 victim 就是防御者自己
-                ScriptHandle(data, value)
-            )
-        } catch (e: NoSuchMethodException) {
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        invokeScript(
+            scriptId = scriptId,
+            functionName = "runDefend",
+            suppressMissingFunction = true,
+            attr,
+            ScriptEntity(attacker),
+            ScriptEntity(victim),
+            ScriptHandle(data, value)
+        )
     }
 
-    /**
-     * 执行更新逻辑
-     */
     fun invokeUpdate(scriptId: String, attr: BaseAttribute, entity: LivingEntity, value: Double) {
-        val inv = scriptCache[scriptId.lowercase()] ?: return
-        try {
-            // Update 时没有 DamageData，传 null
-            inv.invokeFunction(
-                "runUpdate",
-                attr,
-                ScriptEntity(entity),
-                value,
-                ScriptHandle(null, value)
-            )
-        } catch (e: NoSuchMethodException) {
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        invokeScript(
+            scriptId = scriptId,
+            functionName = "runUpdate",
+            suppressMissingFunction = true,
+            attr,
+            ScriptEntity(entity),
+            value,
+            ScriptHandle(null, value)
+        )
     }
 
     // ========================================================
