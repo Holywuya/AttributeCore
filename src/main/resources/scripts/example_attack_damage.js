@@ -15,5 +15,9 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    attacker.addDamage(handle.getValue());
+    var value = handle.getValue();
+    print("[AC-JS-DEBUG] runAttack called: key=" + attr.key + ", value=" + value);
+    print("[AC-JS-DEBUG] attacker type: " + (typeof attacker) + ", has addDamage: " + (typeof attacker.addDamage));
+    attacker.addDamage(value);
+    print("[AC-JS-DEBUG] addDamage called successfully");
 }
