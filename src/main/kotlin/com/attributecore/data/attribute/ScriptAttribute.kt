@@ -36,22 +36,24 @@ class ScriptAttribute(
         this.element?.let { el ->
             com.attributecore.manager.ReactionManager.handleElement(damageData.defender, el, damageData)
         }
-
+        
         console().sendMessage("§e[AC-DEBUG] §f调用脚本: key=$key, value=$value")
+        console().sendMessage("§e[AC-DEBUG] §f参数: attr=$this, attacker=${damageData.attacker.name}, entity=${damageData.defender.name}")
         
         try {
-            script.invokeFunction(
+            val result = script.invokeFunction(
                 "runAttack",
                 this,
                 ScriptEntity(damageData.attacker),
                 ScriptEntity(damageData.defender),
                 ScriptHandle(damageData, value)
             )
-            console().sendMessage("§a[AC-DEBUG] §f脚本执行成功: key=$key")
+            console().sendMessage("§a[AC-DEBUG] §f脚本执行成功: key=$key, 返回值=$result")
         } catch (e: NoSuchMethodException) {
             console().sendMessage("§c[AC-DEBUG] §f脚本 $key 没有 runAttack 函数")
         } catch (e: Exception) {
             console().sendMessage("§c[AttributeCore] 属性脚本 $key 执行 runAttack 时出错: ${e.message}")
+            console().sendMessage("§c[AC-DEBUG] §f异常类型: ${e.javaClass.name}")
             if (CoreConfig.debug) e.printStackTrace()
         }
     }

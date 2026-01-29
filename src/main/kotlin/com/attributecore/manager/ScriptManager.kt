@@ -28,7 +28,7 @@ object ScriptManager {
         val folder = dataFolder
         if (!folder.exists()) {
             folder.mkdirs()
-            try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
+            try { releaseResourceFile("scripts/*.js", false) } catch (e: Exception) {}
         }
     }
 
@@ -45,7 +45,7 @@ object ScriptManager {
         submit(async = true) {
             if (!dataFolder.exists()) {
                 dataFolder.mkdirs()
-                try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
+                try { releaseResourceFile("scripts/*.js", false) } catch (e: Exception) {}
             }
             console().sendMessage("§7[AttributeCore] §f正在重置脚本环境...")
         }
@@ -60,7 +60,7 @@ object ScriptManager {
 
         if (!dataFolder.exists()) {
             dataFolder.mkdirs()
-            try { releaseResourceFile("scripts/example_sword.js", false) } catch (e: Exception) {}
+            try { releaseResourceFile("scripts/*.js", false) } catch (e: Exception) {}
         }
 
         console().sendMessage("§7[AttributeCore] §f正在加载脚本属性...")
@@ -68,6 +68,9 @@ object ScriptManager {
         dataFolder.listFiles { _, n -> n.endsWith(".js") }?.forEach { file ->
             try {
                 val scriptContent = file.readText()
+                
+                console().sendMessage("§e[AC-DEBUG-SCRIPT] §f加载脚本: ${file.name}, 大小=${scriptContent.length} 字符")
+                console().sendMessage("§e[AC-DEBUG-SCRIPT] §f脚本开头: ${scriptContent.take(200).replace('\n', ' ')}")
                 
                 // 1. 注入环境 API
                 scriptEngine.put("api", JavaScriptAPI)
@@ -86,17 +89,31 @@ object ScriptManager {
                 val scriptId = file.nameWithoutExtension.lowercase()
                 scriptCache[scriptId] = inv
 
+                console().sendMessage("§e[AC-DEBUG-SCRIPT] §f验证函数: 尝试调用 getSettings()")
                 @Suppress("UNCHECKED_CAST")
                 val settings = try {
                     inv.invokeFunction("getSettings") as? Map<String, Any>
                 } catch (e: NoSuchMethodException) {
-                    // 脚本没写配置函数，视为纯逻辑脚本 (如反应脚本)
+                    console().sendMessage("§c[AC-DEBUG-SCRIPT] §f脚本 ${file.name} 没有 getSettings 函数")
                     null
                 }
 
                 if (settings != null) {
                     val attr = parseSettingsToAttribute(scriptId, settings, inv)
                     list.add(attr)
+                    
+                    console().sendMessage("§e[AC-DEBUG-SCRIPT] §f验证 runAttack 函数存在性...")
+                    try {
+                        inv.invokeFunction("runAttack", attr, null, null, null)
+                        console().sendMessage("§c[AC-DEBUG-SCRIPT] §frunAttack 被调用了(参数为 null),这不应该发生!")
+                    } catch (e: NoSuchMethodException) {
+                        console().sendMessage("§c[AC-DEBUG-SCRIPT] §f脚本 ${file.name} 没有 runAttack 函数!")
+                    } catch (e: NullPointerException) {
+                        console().sendMessage("§a[AC-DEBUG-SCRIPT] §frunAttack 函数存在 (NullPointerException 符合预期)")
+                    } catch (e: Exception) {
+                        console().sendMessage("§e[AC-DEBUG-SCRIPT] §frunAttack 存在但抛出异常: ${e.message}")
+                    }
+                    
                     console().sendMessage("§7[AttributeCore] §a已注册脚本属性: §f${attr.key} §7(names: ${attr.names.joinToString()}, Script: ${file.name})")
                 } else {
                     console().sendMessage("§7[AttributeCore] §e载入逻辑脚本: ${file.name}")
