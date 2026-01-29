@@ -46,6 +46,10 @@ object AttributeManager {
         reloadAttributesInternal()
         ShieldManager.init()
 
+        Bukkit.getOnlinePlayers().forEach { player ->
+            update(player)
+        }
+
         info("§a[AttributeManager] 属性重载完成")
     }
 
@@ -142,7 +146,7 @@ object AttributeManager {
     }
 
     private fun startCleanupTask() {
-        submit(period = 6000, async = true) {
+        submit(period = 6000, async = false) {
             val toRemove = mutableListOf<UUID>()
             EntityDataManager.getLoadedUUIDs().forEach { uuid ->
                 val entity = Bukkit.getEntity(uuid)
