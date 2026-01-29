@@ -18,5 +18,5 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    handle.addElementalDamage("FIRE", handle.getValue());
+    attacker.addElementalDamage("FIRE", handle.getValue());
 }

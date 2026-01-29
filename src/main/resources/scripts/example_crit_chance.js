@@ -18,5 +18,5 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    handle.rollCrit(handle.getValue());
+    attacker.rollCrit(handle.getValue());
 }

@@ -17,5 +17,5 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    handle.addFixedPenetration(handle.getValue());
+    attacker.addFixedPenetration(handle.getValue());
 }

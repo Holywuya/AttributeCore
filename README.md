@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.3.0.0  
+**Version**: 1.4.0.0  
 **Minecraft**: Paper 1.21.1  
 **TabooLib**: 6.2.4
 
@@ -25,7 +25,7 @@
 
 ### 安装
 
-1. 下载最新版本的 `AttributeCore-1.3.0.0.jar`
+1. 下载最新版本的 `AttributeCore-1.4.0.0.jar`
 2. 将 JAR 文件放入服务器的 `plugins/` 目录
 3. 重启服务器
 4. 配置文件将自动生成在 `plugins/AttributeCore/`
@@ -118,7 +118,7 @@ function getSettings() {
 
 function runAttack(attr, attacker, victim, handle) {
     let damage = handle.getValue();
-    handle.addDamage(damage);
+    attacker.addDamage(damage);  // AttributePlus 风格 API
 }
 ```
 
@@ -153,7 +153,7 @@ function runAttack(attr, attacker, victim, handle) {
 ./gradlew build
 ```
 
-生成文件：`build/libs/AttributeCore-1.3.0.0.jar`
+生成文件：`build/libs/AttributeCore-1.4.0.0.jar`
 
 ### 构建开发版本
 
@@ -228,6 +228,15 @@ AttributeCore/
 ---
 
 ## 更新日志
+
+### v1.4.0.0 (2026-01-29)
+- ✅ 重构：脚本 API 改为 AttributePlus 风格（`attacker.addDamage()` 而非 `handle.addDamage()`）
+- ✅ 重写：ScriptEntity.kt 包装实体，暴露完整伤害/防御/暴击/护盾方法
+- ✅ 简化：ScriptHandle.kt 仅保留数据查询功能
+- ✅ 增强：AttributeExtensions.kt 添加 30+ 扩展方法
+- ✅ 修复：ScriptManager 字段映射兼容 key/id 和 displayName/display
+- ✅ 更新：11 个示例脚本全部适配新 API
+- ✅ 新增：docs/SCRIPT_GUIDE.md 完整脚本开发指南
 
 ### v1.3.0.0 (2026-01-29)
 - ✅ 新增：完整的外部 API（属性管理、护盾、战斗力、伤害系统）

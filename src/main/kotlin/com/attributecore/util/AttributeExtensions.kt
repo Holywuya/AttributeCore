@@ -7,65 +7,64 @@ import org.bukkit.entity.LivingEntity
 import java.util.concurrent.ThreadLocalRandom
 
 /**
- * 为 LivingEntity 扩展的“拟人化”方法集
- * 使得在 Kotlin 或 JS 脚本中可以直接通过实体对象操作插件逻辑
+ * AttributePlus 风格 API
+ * 使得在 JS 脚本中可以直接通过 attacker.addDamage() 操作
  */
 
 // ==========================================
 //          属性读取相关 (Getters)
 // ==========================================
 
-/**
- * 获取实体的随机属性值 (Roll点)
- * 用法: entity.getRandomValue("physical_damage")
- */
 fun LivingEntity.getRandomValue(key: String): Double {
     val vals = AttributeManager.getData(this).get(key)
     if (vals[0] == vals[1]) return vals[0]
     return ThreadLocalRandom.current().nextDouble(vals[0], vals[1])
 }
 
-/**
- * 获取属性最小值 (基础值)
- */
 fun LivingEntity.getAttrMin(key: String): Double {
     return AttributeManager.getData(this).get(key)[0]
 }
 
-/**
- * 获取属性最大值
- */
 fun LivingEntity.getAttrMax(key: String): Double {
     return AttributeManager.getData(this).get(key)[1]
 }
 
-/**
- * 获取当前战斗力
- */
+fun LivingEntity.getAttributeValue(key: String): DoubleArray {
+    return AttributeManager.getData(this).get(key)
+}
+
 fun LivingEntity.getCP(): Double {
     return AttributeManager.getCombatPower(this)
 }
 
 // ==========================================
-//          伤害修改相关 (Damage Data)
+//          伤害操作 (AttributePlus Style)
 // ==========================================
 
-/**
- * 直接给当前攻击增加伤害数值 (作用于 PHYSICAL 桶)
- * 用法: attacker.addDamage(50.0)
- */
+fun LivingEntity.getDamage(): Double {
+    val activeData = DamageContext.getActiveData() ?: return 0.0
+    return activeData.getFinalDamage()
+}
+
+fun LivingEntity.setDamage(value: Double) {
+    val activeData = DamageContext.getActiveData() ?: return
+    activeData.addDamage(value - activeData.originalDamage)
+}
+
 fun LivingEntity.addDamage(value: Double) {
     val activeData = DamageContext.getActiveData()
-    // 安全检查：只有当前活跃的伤害发起者是自己时，操作才生效
     if (activeData != null && activeData.attacker == this) {
         activeData.addDamage(value)
     }
 }
 
-/**
- * 增加特定类型的伤害桶数值 (如 FIRE, WATER, MAGIC)
- * 用法: attacker.addBucketDamage("FIRE", 20.0)
- */
+fun LivingEntity.takeDamage(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.attacker == this) {
+        activeData.addDamage(-value)
+    }
+}
+
 fun LivingEntity.addBucketDamage(type: String, value: Double) {
     val activeData = DamageContext.getActiveData()
     if (activeData != null && activeData.attacker == this) {
@@ -73,10 +72,13 @@ fun LivingEntity.addBucketDamage(type: String, value: Double) {
     }
 }
 
-/**
- * 设置本次攻击的全局伤害倍率
- * 用法: attacker.setDamageMultiplier(1.5)
- */
+fun LivingEntity.addElementalDamage(type: String, value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.attacker == this) {
+        activeData.addElementalDamage(type, value)
+    }
+}
+
 fun LivingEntity.setDamageMultiplier(value: Double) {
     val activeData = DamageContext.getActiveData()
     if (activeData != null && activeData.attacker == this) {
@@ -84,10 +86,10 @@ fun LivingEntity.setDamageMultiplier(value: Double) {
     }
 }
 
-/**
- * 设置本次攻击的暴击层级 (Warframe 风格)
- * 1=黄暴, 2=橙暴, 3=红暴...
- */
+// ==========================================
+//          暴击系统 (Crit System)
+// ==========================================
+
 fun LivingEntity.setCritTier(tier: Int) {
     val activeData = DamageContext.getActiveData()
     if (activeData != null && activeData.attacker == this) {
@@ -95,9 +97,6 @@ fun LivingEntity.setCritTier(tier: Int) {
     }
 }
 
-/**
- * 给本次攻击增加额外的暴击伤害百分比
- */
 fun LivingEntity.addCritDamage(value: Double) {
     val activeData = DamageContext.getActiveData()
     if (activeData != null && activeData.attacker == this) {
@@ -105,33 +104,134 @@ fun LivingEntity.addCritDamage(value: Double) {
     }
 }
 
+fun LivingEntity.rollCrit(chance: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.attacker == this) {
+        activeData.rollCrit(chance)
+    }
+}
+
+fun LivingEntity.addCritResistance(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && (activeData.defender == this || activeData.attacker == this)) {
+        activeData.addCritResistance(value)
+    }
+}
+
+fun LivingEntity.addCritResilience(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && (activeData.defender == this || activeData.attacker == this)) {
+        activeData.addCritResilience(value)
+    }
+}
+
 // ==========================================
-//          状态与护盾相关 (Status & Shield)
+//          防御系统 (Defense System)
 // ==========================================
 
-/**
- * 修改实体的护盾值
- * 用法: entity.addShield(100.0) / entity.addShield(-50.0)
- */
+fun LivingEntity.addDefenseScore(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addDefenseScore(value)
+    }
+}
+
+fun LivingEntity.addPhysicalDefense(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addPhysicalDefense(value)
+    }
+}
+
+fun LivingEntity.addMagicalDefense(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addMagicalDefense(value)
+    }
+}
+
+fun LivingEntity.addFixedPenetration(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.attacker == this) {
+        activeData.addFixedPenetration(value)
+    }
+}
+
+fun LivingEntity.addPercentPenetration(value: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.attacker == this) {
+        activeData.addPercentPenetration(value)
+    }
+}
+
+// ==========================================
+//          伤害减免 (Damage Reduction)
+// ==========================================
+
+fun LivingEntity.addUniversalReduction(percent: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addUniversalReduction(percent)
+    }
+}
+
+fun LivingEntity.addUniversalFlatReduction(amount: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addUniversalFlatReduction(amount)
+    }
+}
+
+fun LivingEntity.addBucketResistance(type: String, percent: Double) {
+    val activeData = DamageContext.getActiveData()
+    if (activeData != null && activeData.defender == this) {
+        activeData.addBucketResistance(type, percent)
+    }
+}
+
+// ==========================================
+//          标签系统 (Tag System)
+// ==========================================
+
+fun LivingEntity.addTag(tag: String) {
+    val activeData = DamageContext.getActiveData() ?: return
+    activeData.addTag(tag)
+}
+
+fun LivingEntity.hasTag(tag: String): Boolean {
+    val activeData = DamageContext.getActiveData() ?: return false
+    return activeData.hasTag(tag)
+}
+
+fun LivingEntity.removeTag(tag: String) {
+    val activeData = DamageContext.getActiveData() ?: return
+    activeData.removeTag(tag)
+}
+
+// ==========================================
+//          护盾与生命 (Shield & Health)
+// ==========================================
+
 fun LivingEntity.addShield(value: Double) {
     ShieldManager.modifyShield(this.uniqueId, value)
 }
 
-/**
- * 获取实体当前的护盾值
- */
 fun LivingEntity.getShield(): Double {
     return ShieldManager.getCurrentShield(this.uniqueId)
 }
 
-/**
- * 治疗实体 (不会超过最大生命值)
- * 用法: entity.healSelf(10.0)
- */
 fun LivingEntity.healSelf(amount: Double) {
     val maxHp = this.getAttribute(Attribute.GENERIC_MAX_HEALTH)?.value ?: 20.0
     val currentHp = this.health
     if (currentHp < maxHp) {
         this.health = (currentHp + amount).coerceAtMost(maxHp)
     }
+}
+
+// ==========================================
+//          几率判定 (Chance)
+// ==========================================
+
+fun Double.chance(): Boolean {
+    return ThreadLocalRandom.current().nextDouble(100.0) < this
 }

@@ -1,8 +1,6 @@
 /**
- * 示例属性：物理攻击力
- * 类型：攻击型
- * 
- * 功能：增加基础物理伤害
+ * 物理攻击力
+ * 类型：ATTACK
  */
 
 function getSettings() {
@@ -17,6 +15,5 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    // 直接增加物理伤害
-    handle.addDamage(handle.getValue());
+    attacker.addDamage(handle.getValue());
 }

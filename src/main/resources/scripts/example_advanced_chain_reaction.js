@@ -18,9 +18,9 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    handle.addElementalDamage("THUNDER", handle.getValue());
+    attacker.addElementalDamage("THUNDER", handle.getValue());
     
-    var target = entity.getBukkitEntity();
+    var target = entity.getBukkit();
     var nearbyEntities = target.getNearbyEntities(5, 3, 5);
     
     var chainCount = 0;
@@ -29,21 +29,14 @@ function runAttack(attr, attacker, entity, handle) {
     for (var i = 0; i < nearbyEntities.size() && chainCount < maxChains; i++) {
         var nearby = nearbyEntities.get(i);
         if (nearby instanceof org.bukkit.entity.LivingEntity && 
-            nearby.getUniqueId() != attacker.getBukkitEntity().getUniqueId()) {
+            nearby.getUniqueId() != attacker.getBukkit().getUniqueId()) {
             
-            nearby.damage(handle.getValue() * 0.5, attacker.getBukkitEntity());
-            
-            nearby.getWorld().spigot().playEffect(
-                nearby.getLocation().add(0, 1, 0),
-                org.bukkit.Effect.MOBSPAWNER_FLAMES,
-                0, 0, 0, 0, 0, 0.1, 10, 64
-            );
-            
+            nearby.damage(handle.getValue() * 0.5, attacker.getBukkit());
             chainCount++;
         }
     }
     
     if (chainCount > 0) {
-        attacker.sendActionBar("&e⚡ 连锁 " + chainCount + " 个目标!");
+        attacker.actionbar("&e⚡ 连锁 " + chainCount + " 个目标!");
     }
 }

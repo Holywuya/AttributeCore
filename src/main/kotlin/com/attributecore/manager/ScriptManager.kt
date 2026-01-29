@@ -97,7 +97,7 @@ object ScriptManager {
                 if (settings != null) {
                     val attr = parseSettingsToAttribute(scriptId, settings, inv)
                     list.add(attr)
-                    console().sendMessage("§7[AttributeCore] §a已注册脚本属性: §f${attr.key} §7(Script: ${file.name})")
+                    console().sendMessage("§7[AttributeCore] §a已注册脚本属性: §f${attr.key} §7(names: ${attr.names.joinToString()}, Script: ${file.name})")
                 } else {
                     console().sendMessage("§7[AttributeCore] §e载入逻辑脚本: ${file.name}")
                 }
@@ -178,7 +178,8 @@ object ScriptManager {
     // ========================================================
 
     private fun parseSettingsToAttribute(scriptId: String, map: Map<String, Any>, inv: Invocable): ScriptAttribute {
-        val id = map["id"]?.toString() ?: scriptId
+        // 兼容 key/id 两种写法（优先使用 key，与 AttributePlus 风格一致）
+        val id = map["key"]?.toString() ?: map["id"]?.toString() ?: scriptId
         val type = try { AttributeType.valueOf(map["type"]?.toString()?.uppercase() ?: "OTHER") } catch (e: Exception) { AttributeType.OTHER }
         val names = extractList(map["names"]).ifEmpty { mutableListOf(id) }
         val priority = Coerce.toInteger(map["priority"] ?: 0)
@@ -188,7 +189,8 @@ object ScriptManager {
 
         if (element != null) tags.add("ELEMENT_$element")
 
-        val display = map["display"]?.toString()?.replace("&", "§") ?: id
+        // 兼容 displayName/display 两种写法
+        val display = (map["displayName"] ?: map["display"])?.toString()?.replace("&", "§") ?: id
 
         // ✅ 修正：直接实例化 ScriptAttribute，并将 display 传入构造函数
         // 不再需要 "object : ScriptAttribute" 这种写法

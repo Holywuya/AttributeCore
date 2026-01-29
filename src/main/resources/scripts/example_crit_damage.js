@@ -17,5 +17,5 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    handle.addCritDamage(handle.getValue());
+    attacker.addCritDamage(handle.getValue());
 }

@@ -17,5 +17,5 @@ function getSettings() {
 }
 
 function runDefend(attr, attacker, entity, handle) {
-    handle.addUniversalReduction(handle.getValue());
+    entity.addUniversalReduction(handle.getValue());
 }

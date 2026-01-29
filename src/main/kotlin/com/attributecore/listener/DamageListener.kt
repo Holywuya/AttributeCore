@@ -40,6 +40,11 @@ object DamageListener {
             val defenceData = AttributeManager.getData(defender)
             val damageData = DamageData(attacker, defender, e)
 
+            if (CoreConfig.debug) {
+                console().sendMessage("§7[Debug] §fDamage event: ${attacker.name} -> ${defender.name}, original=${e.damage}")
+                console().sendMessage("§7[Debug] §fAttacker data: ${attackData.getNonZeroAttributes()}")
+            }
+
             // 3. 注入计算上下文，这是 "attacker.addDamage()" 能够生效的核心
             DamageContext.setActiveData(damageData)
 
@@ -65,6 +70,9 @@ object DamageListener {
 
                 if (min != 0.0 || max != 0.0) {
                     val roll = if (min == max) min else ThreadLocalRandom.current().nextDouble(Math.min(min, max), Math.max(min, max))
+                    if (CoreConfig.debug) {
+                        console().sendMessage("§7[Debug] §fAttr: ${attr.key}, min=$min, max=$max, roll=$roll")
+                    }
                     // 执行行为 (Native 或 JS)
                     attr.onAttack(damageData, roll, max)
                 }

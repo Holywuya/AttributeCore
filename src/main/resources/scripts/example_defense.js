@@ -17,5 +17,5 @@ function getSettings() {
 }
 
 function runDefend(attr, attacker, entity, handle) {
-    handle.addDefenseScore(handle.getValue());
+    entity.addDefenseScore(handle.getValue());
 }

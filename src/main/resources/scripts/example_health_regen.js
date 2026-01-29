@@ -17,12 +17,5 @@ function getSettings() {
 }
 
 function runUpdate(attr, entity, value, handle) {
-    var player = entity.getBukkitEntity();
-    var currentHealth = player.getHealth();
-    var maxHealth = player.getAttribute(
-        org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH
-    ).getValue();
-    
-    var newHealth = Math.min(currentHealth + value, maxHealth);
-    player.setHealth(newHealth);
+    entity.heal(value);
 }

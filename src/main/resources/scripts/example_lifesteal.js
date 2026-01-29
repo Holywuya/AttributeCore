@@ -17,17 +17,7 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    var damageData = handle.getDamageData();
-    var finalDamage = damageData.getFinalDamage();
-    
+    var finalDamage = attacker.getDamage();
     var healAmount = finalDamage * (handle.getValue() / 100.0);
-    
-    var player = attacker.getBukkitEntity();
-    var currentHealth = player.getHealth();
-    var maxHealth = player.getAttribute(
-        org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH
-    ).getValue();
-    
-    var newHealth = Math.min(currentHealth + healAmount, maxHealth);
-    player.setHealth(newHealth);
+    attacker.heal(healAmount);
 }
