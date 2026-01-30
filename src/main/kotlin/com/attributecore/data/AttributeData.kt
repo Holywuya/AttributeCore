@@ -59,7 +59,7 @@ data class AttributeData(
         return combatPower
     }
 
-    fun correct(ranges: Map<String, DoubleRange> = emptyMap()) {
+    fun correct(ranges: Map<String, ClosedFloatingPointRange<Double>> = emptyMap()) {
         values.replaceAll { key, value ->
             val range = ranges[key]
             when {
