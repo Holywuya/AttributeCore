@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.4.0.0  
+**Version**: 1.5.0.0  
 **Minecraft**: Paper 1.21.1  
 **TabooLib**: 6.2.4
 
@@ -228,6 +228,19 @@ AttributeCore/
 ---
 
 ## 更新日志
+
+### v1.5.0.0 (2026-01-30)
+- ✅ 重构：完全重写属性系统，参考 SX-Attribute 4.x 架构
+- ✅ 新增：SubAttribute 抽象基类，支持动态注册机制
+- ✅ 新增：SXAttributeData 二维数组数据结构
+- ✅ 新增：SXAttributeManager 属性管理器
+- ✅ 新增：16个内置属性类（Damage, Crit, Defense, Block, Dodge等）
+- ✅ 新增：EventData/DamageData/UpdateData 事件数据体系
+- ✅ 重构：AttributeCore 主类，使用 @Awake 生命周期管理
+- ✅ 新增：ListenerDamage 和 ListenerUpdateAttribute 监听器
+- ✅ 新增：Config 配置管理工具类
+- ✅ 优化：属性计算优先级系统
+- ✅ 优化：战斗力自动计算
 
 ### v1.4.0.0 (2026-01-29)
 - ✅ 重构：脚本 API 改为 AttributePlus 风格（`attacker.addDamage()` 而非 `handle.addDamage()`）
