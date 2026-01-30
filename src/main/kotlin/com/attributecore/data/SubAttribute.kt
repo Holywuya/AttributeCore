@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
+import taboolib.common.platform.function.info
 import java.io.File
 import java.util.regex.Pattern
 
@@ -77,21 +78,27 @@ abstract class SubAttribute(
     }
 
     protected fun createPattern(prefix: String, suffix: String = ""): Pattern {
-        // 支持两种格式：
+        // 支持多种格式：
         // 1. 带颜色代码：§c攻击力 §f100 或 §c攻击力：§f100
-        // 2. 不带颜色代码：攻击力：100 或 攻击力 100
+        // 2. 不带颜色代码：攻击力：100 或 攻击力 100 或 攻击力: 100（冒号+空格）
         val regex = if (suffix.isEmpty()) {
-            "(?:§.)?${prefix}(?:§.)?[：: ]?(?:§.)?([+-]?\\d+\\.?\\d*)"
+            "(?:§.)?${prefix}(?:§.)?[：: ]*(?:§.)?([+-]?\\d+\\.?\\d*)"
         } else {
-            "(?:§.)?${prefix}(?:§.)?[：: ]?(?:§.)?([+-]?\\d+\\.?\\d*)(?:§.)?${suffix}"
+            "(?:§.)?${prefix}(?:§.)?[：: ]*(?:§.)?([+-]?\\d+\\.?\\d*)(?:§.)?${suffix}"
         }
         return Pattern.compile(regex)
     }
 
     protected fun matchValue(lore: String, pattern: Pattern): Double? {
         val matcher = pattern.matcher(lore)
-        return if (matcher.find()) {
-            matcher.group(1).toDoubleOrNull()
-        } else null
+        val matched = matcher.find()
+        if (matched) {
+            val value = matcher.group(1).toDoubleOrNull()
+            info("[Debug] 正则匹配成功! Lore: $lore, 提取值: $value, Pattern: ${pattern.pattern()}")
+            return value
+        } else {
+            info("[Debug] 正则匹配失败! Lore: $lore, Pattern: ${pattern.pattern()}")
+            return null
+        }
     }
 }
