@@ -76,13 +76,16 @@ object ScriptManager {
                 scriptEngine.put("api", JavaScriptAPI)
                 scriptEngine.put("Bukkit", org.bukkit.Bukkit::class.java)
 
-                // 2. 预编译脚本以提高性能
-                val compiledScript = scriptContent.compileJS()
-                if (compiledScript != null) {
-                    compiledScript.eval()
-                } else {
-                    // 如果编译失败，直接执行
-                    scriptEngine.eval(scriptContent)
+                // 2. 直接执行脚本 (绕过编译以诊断问题)
+                console().sendMessage("§e[AC-DEBUG-SCRIPT] §f直接执行脚本 (不使用 compileJS)")
+                scriptEngine.eval(scriptContent)
+                
+                console().sendMessage("§e[AC-DEBUG-SCRIPT] §f脚本执行完成,检查函数是否已定义...")
+                try {
+                    val testResult = scriptEngine.eval("typeof runAttack")
+                    console().sendMessage("§e[AC-DEBUG-SCRIPT] §ftypeof runAttack = $testResult")
+                } catch (e: Exception) {
+                    console().sendMessage("§c[AC-DEBUG-SCRIPT] §f检查 runAttack 失败: ${e.message}")
                 }
 
                 val inv = scriptEngine as Invocable

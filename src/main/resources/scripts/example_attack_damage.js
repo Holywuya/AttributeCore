@@ -1,6 +1,6 @@
 /**
  * 物理攻击力
- * 类型：ATTACK
+ * 类型:ATTACK
  */
 
 function getSettings() {
@@ -15,14 +15,12 @@ function getSettings() {
 }
 
 function runAttack(attr, attacker, entity, handle) {
-    var value = handle.getValue();
+    java.lang.System.out.println("[JS-DIRECT] runAttack START");
     
-    try {
-        api.tell(attacker.getBukkit(), "[JS] runAttack: key=" + attr.key + ", value=" + value);
-        api.tell(attacker.getBukkit(), "[JS] About to call addDamage with value: " + value);
-        attacker.addDamage(value);
-        api.tell(attacker.getBukkit(), "[JS] addDamage SUCCESS");
-    } catch (e) {
-        api.tell(attacker.getBukkit(), "[JS] ERROR: " + e.message);
-    }
+    var value = handle.getValue();
+    java.lang.System.out.println("[JS-DIRECT] getValue() returned: " + value);
+    
+    java.lang.System.out.println("[JS-DIRECT] Calling addDamage(" + value + ")");
+    attacker.addDamage(value);
+    java.lang.System.out.println("[JS-DIRECT] addDamage() completed");
 }
