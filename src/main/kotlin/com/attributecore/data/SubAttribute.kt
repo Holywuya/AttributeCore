@@ -1,11 +1,11 @@
 package com.attributecore.data
 
 import com.attributecore.event.EventData
+import com.attributecore.util.DebugLogger
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
-import taboolib.common.platform.function.info
 import java.io.File
 import java.util.regex.Pattern
 
@@ -94,10 +94,10 @@ abstract class SubAttribute(
         val matched = matcher.find()
         if (matched) {
             val value = matcher.group(1).toDoubleOrNull()
-            info("[Debug] 正则匹配成功! Lore: $lore, 提取值: $value, Pattern: ${pattern.pattern()}")
+            DebugLogger.logRegexMatch("匹配成功! Lore: $lore, 提取值: $value")
             return value
         } else {
-            info("[Debug] 正则匹配失败! Lore: $lore, Pattern: ${pattern.pattern()}")
+            DebugLogger.logRegexMatch("匹配失败! Lore: $lore, Pattern: ${pattern.pattern()}")
             return null
         }
     }

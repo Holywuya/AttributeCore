@@ -5,8 +5,8 @@ import com.attributecore.data.AttributeType
 import com.attributecore.data.SubAttribute
 import com.attributecore.event.DamageEventData
 import com.attributecore.event.EventData
+import com.attributecore.util.DebugLogger
 import org.bukkit.entity.Player
-import taboolib.common.platform.function.info
 
 class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
     init {
@@ -20,7 +20,7 @@ class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
     override fun loadAttribute(attributeData: AttributeData, lore: String) {
         matchValue(lore, pattern)?.let {
             attributeData.add(name, it)
-            info("[Debug] 攻击力属性解析成功: $it")
+            DebugLogger.logAttributeLoading("攻击力属性解析成功: $it")
         }
     }
 
@@ -30,7 +30,7 @@ class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
             if (value > 0) {
                 val oldDamage = eventData.damage
                 eventData.damage += value
-                info("[Debug] 攻击力加成: $value, 原伤害: $oldDamage, 新伤害: ${eventData.damage}")
+                DebugLogger.logDamageCalculation("攻击力加成: $value, 原伤害: $oldDamage, 新伤害: ${eventData.damage}")
             }
         }
     }

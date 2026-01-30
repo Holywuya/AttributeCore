@@ -2,16 +2,16 @@ package com.attributecore.manager
 
 import com.attributecore.data.AttributeData
 import com.attributecore.data.SubAttribute
+import com.attributecore.util.DebugLogger
 import org.bukkit.inventory.ItemStack
 import taboolib.module.nms.getItemTag
-import taboolib.common.platform.function.info
 
 object ItemAttributeReader {
     fun parseAttributesFromLore(data: AttributeData, lore: String) {
         val cleanLore = lore.split("§X")[0]
         if (cleanLore.isEmpty()) return
 
-        info("[Debug] 解析 Lore: $cleanLore")
+        DebugLogger.logAttributeLoading("解析 Lore: $cleanLore")
 
         SubAttribute.getAttributes().forEach { attribute ->
             attribute.loadAttribute(data, cleanLore)
