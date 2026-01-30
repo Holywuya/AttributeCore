@@ -8,6 +8,7 @@ import com.attributecore.manager.AttributeManager
 import org.bukkit.entity.LivingEntity
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import taboolib.common.platform.event.SubscribeEvent
+import taboolib.common.platform.function.info
 
 object DamageListener {
     @SubscribeEvent
@@ -15,8 +16,13 @@ object DamageListener {
         val attacker = event.damager as? LivingEntity ?: return
         val victim = event.entity as? LivingEntity ?: return
 
+        info("[Debug] 伤害事件触发: ${attacker.name} -> ${victim.name}, 基础伤害: ${event.damage}")
+
         val attackerData = AttributeManager.getEntityData(attacker)
         val victimData = AttributeManager.getEntityData(victim)
+
+        info("[Debug] 攻击者属性: ${attackerData.getNonZeroAttributes()}")
+        info("[Debug] 防御者属性: ${victimData.getNonZeroAttributes()}")
 
         val attackEvent = DamageEventData(attacker, victim, event)
         SubAttribute.getAttributes()
@@ -30,5 +36,6 @@ object DamageListener {
             .forEach { it.eventMethod(victimData, defenceEvent) }
 
         event.damage = defenceEvent.damage
+        info("[Debug] 最终伤害: ${event.damage}")
     }
 }

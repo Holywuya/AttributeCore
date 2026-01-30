@@ -77,10 +77,13 @@ abstract class SubAttribute(
     }
 
     protected fun createPattern(prefix: String, suffix: String = ""): Pattern {
+        // 支持两种格式：
+        // 1. 带颜色代码：§c攻击力 §f100 或 §c攻击力：§f100
+        // 2. 不带颜色代码：攻击力：100 或 攻击力 100
         val regex = if (suffix.isEmpty()) {
-            "§.?$prefix§.?([+-]?\\d+\\.?\\d*)"
+            "(?:§.)?${prefix}(?:§.)?[：: ]?(?:§.)?([+-]?\\d+\\.?\\d*)"
         } else {
-            "§.?$prefix§.?([+-]?\\d+\\.?\\d*)§.?$suffix"
+            "(?:§.)?${prefix}(?:§.)?[：: ]?(?:§.)?([+-]?\\d+\\.?\\d*)(?:§.)?${suffix}"
         }
         return Pattern.compile(regex)
     }

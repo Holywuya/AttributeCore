@@ -5,6 +5,7 @@ import com.attributecore.data.SubAttribute
 import org.bukkit.entity.LivingEntity
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
+import taboolib.common.platform.function.info
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -19,7 +20,12 @@ object AttributeManager {
     }
 
     fun getEntityData(entity: LivingEntity): AttributeData {
-        return entityDataCache.computeIfAbsent(entity.uniqueId) { AttributeData() }
+        val cached = entityDataCache[entity.uniqueId]
+        if (cached != null) {
+            return cached
+        }
+        info("[Debug] 首次加载实体属性: ${entity.name}")
+        return loadEntityData(entity)
     }
 
     fun clearEntityData(uuid: UUID) {
@@ -34,6 +40,8 @@ object AttributeManager {
         val data = AttributeData()
         val equipment = entity.equipment ?: return data
 
+        info("[Debug] 加载实体装备: ${entity.name}")
+
         listOf(
             equipment.itemInMainHand,
             equipment.itemInOffHand,
@@ -45,6 +53,8 @@ object AttributeManager {
             if (!item.hasItemMeta()) return@forEach
             val lore = item.itemMeta?.lore ?: return@forEach
 
+            info("[Debug] 扫描物品: ${item.type}, Lore 行数: ${lore.size}")
+
             lore.forEach { line ->
                 ItemAttributeReader.parseAttributesFromLore(data, line)
             }
@@ -52,6 +62,7 @@ object AttributeManager {
             ItemAttributeReader.parseAttributesFromNBT(data, item)
         }
 
+        info("[Debug] 加载完成，属性数据: ${data.getNonZeroAttributes()}")
         updateEntityData(entity, data)
         return data
     }
