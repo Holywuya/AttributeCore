@@ -27,3 +27,10 @@ data class DefenceEventData(
 data class UpdateEventData(
     override val entity: LivingEntity
 ) : EventData()
+
+data class KillerEventData(
+    val killer: LivingEntity,
+    val victim: LivingEntity
+) : EventData() {
+    override val entity: LivingEntity = killer
+}

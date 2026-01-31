@@ -3,19 +3,25 @@ package com.attributecore.listener
 import com.attributecore.data.*
 import com.attributecore.event.DamageEventData
 import com.attributecore.event.DefenceEventData
+import com.attributecore.event.KillerEventData
 import com.attributecore.manager.AttributeManager
+import com.attributecore.script.AttributeHandle
+import com.attributecore.script.JsAttribute
 import com.attributecore.script.ScriptContext
 import com.attributecore.script.ScriptManager
 import com.attributecore.script.ScriptPhase
 import com.attributecore.util.DebugLogger
 import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDeathEvent
 import taboolib.common.platform.event.SubscribeEvent
 
 object DamageListener {
+    
     @SubscribeEvent
     fun onDamage(event: EntityDamageByEntityEvent) {
-        val attacker = event.damager as? LivingEntity ?: return
+        val (attacker, isProjectile) = resolveAttacker(event) ?: return
         val victim = event.entity as? LivingEntity ?: return
 
         DebugLogger.logDamageCalculation("伤害事件触发: ${attacker.name} -> ${victim.name}, 基础伤害: ${event.damage}")
@@ -51,11 +57,32 @@ object DamageListener {
         damageBucket.multiplyAll(preDamageContext.damageMultiplier)
         DebugLogger.logDamageCalculation("PRE_DAMAGE 后: $damageBucket, 倍率: ${preDamageContext.damageMultiplier}")
 
+        val handle = AttributeHandle.fromDamageEvent(attacker, victim, damageBucket.total())
+        handle.setAttackerData(attackerData)
+        handle.setEntityData(victimData)
+
         val attackEvent = DamageEventData(attacker, victim, event)
         attackEvent.damage = damageBucket.total()
         SubAttribute.getAttributes()
-            .filter { it.containsType(AttributeType.Attack) }
+            .filter { it.containsType(AttributeType.Attack) && it !is JsAttribute }
             .forEach { it.eventMethod(attackerData, attackEvent) }
+
+        handle.setDamage(attackEvent.damage)
+
+        executeJsAttackAttributes(attacker, victim, attackerData, handle)
+
+        if (handle.isCancelled()) {
+            event.isCancelled = true
+            DebugLogger.logDamageCalculation("伤害被 JS 属性取消")
+            return
+        }
+
+        val attackDamage = handle.getDamage()
+        if (attackDamage != attackEvent.damage) {
+            val ratio = if (attackEvent.damage > 0) attackDamage / attackEvent.damage else 1.0
+            damageBucket.multiplyAll(ratio)
+            DebugLogger.logDamageCalculation("Attack 阶段后伤害: $attackDamage")
+        }
 
         processElementalReaction(attacker, victim, damageBucket, attackerData, victimData)
 
@@ -63,11 +90,23 @@ object DamageListener {
         damageBucket.applyResistances(resistances)
         DebugLogger.logDamageCalculation("抗性计算后: $damageBucket")
 
+        handle.setDamage(damageBucket.total())
+
         val defenceEvent = DefenceEventData(victim, attacker, event)
         defenceEvent.damage = damageBucket.total()
         SubAttribute.getAttributes()
-            .filter { it.containsType(AttributeType.Defence) }
+            .filter { it.containsType(AttributeType.Defence) && it !is JsAttribute }
             .forEach { it.eventMethod(victimData, defenceEvent) }
+
+        handle.setDamage(defenceEvent.damage)
+
+        executeJsDefenseAttributes(victim, attacker, victimData, handle)
+
+        if (handle.isCancelled()) {
+            event.isCancelled = true
+            DebugLogger.logDamageCalculation("伤害被 JS 防御属性取消")
+            return
+        }
 
         val postDamageContext = ScriptContext(
             phase = ScriptPhase.POST_DAMAGE,
@@ -79,9 +118,103 @@ object DamageListener {
         )
         ScriptManager.executePhase(ScriptPhase.POST_DAMAGE, postDamageContext)
 
-        val finalDamage = defenceEvent.damage * postDamageContext.damageMultiplier
+        val finalDamage = handle.getDamage() * postDamageContext.damageMultiplier
         event.damage = finalDamage.coerceAtLeast(0.0)
         DebugLogger.logDamageCalculation("最终伤害: ${event.damage}")
+    }
+
+    @SubscribeEvent
+    fun onEntityDeath(event: EntityDeathEvent) {
+        val victim = event.entity
+        val killer = victim.killer ?: return
+
+        val killerData = AttributeManager.getEntityData(killer)
+        val victimData = AttributeManager.getEntityData(victim)
+
+        val handle = AttributeHandle(
+            attacker = killer,
+            entity = victim,
+            damage = 0.0
+        )
+        handle.setAttackerData(killerData)
+        handle.setEntityData(victimData)
+
+        executeJsKillerAttributes(killer, victim, killerData, handle)
+
+        DebugLogger.logDamageCalculation("击杀事件: ${killer.name} 击杀了 ${victim.name}")
+    }
+
+    private fun resolveAttacker(event: EntityDamageByEntityEvent): Pair<LivingEntity, Boolean>? {
+        val damager = event.damager
+        return when {
+            damager is LivingEntity -> damager to false
+            damager is Projectile -> {
+                val shooter = damager.shooter
+                if (shooter is LivingEntity) shooter to true else null
+            }
+            else -> null
+        }
+    }
+
+    private fun executeJsAttackAttributes(
+        attacker: LivingEntity,
+        victim: LivingEntity,
+        attackerData: AttributeData,
+        handle: AttributeHandle
+    ) {
+        SubAttribute.getAttributes()
+            .filterIsInstance<JsAttribute>()
+            .filter { it.containsType(AttributeType.Attack) }
+            .sortedBy { it.priority }
+            .forEach { jsAttr ->
+                if (!handle.isCancelled()) {
+                    val attrValue = attackerData[jsAttr.name]
+                    if (attrValue > 0) {
+                        DebugLogger.logDamageCalculation("执行 JS Attack 属性: ${jsAttr.name}, 值: $attrValue")
+                        jsAttr.runAttack(attacker, victim, handle)
+                    }
+                }
+            }
+    }
+
+    private fun executeJsDefenseAttributes(
+        victim: LivingEntity,
+        attacker: LivingEntity?,
+        victimData: AttributeData,
+        handle: AttributeHandle
+    ) {
+        SubAttribute.getAttributes()
+            .filterIsInstance<JsAttribute>()
+            .filter { it.containsType(AttributeType.Defence) }
+            .sortedBy { it.priority }
+            .forEach { jsAttr ->
+                if (!handle.isCancelled()) {
+                    val attrValue = victimData[jsAttr.name]
+                    if (attrValue > 0) {
+                        DebugLogger.logDamageCalculation("执行 JS Defence 属性: ${jsAttr.name}, 值: $attrValue")
+                        jsAttr.runDefense(victim, attacker, handle)
+                    }
+                }
+            }
+    }
+
+    private fun executeJsKillerAttributes(
+        killer: LivingEntity,
+        victim: LivingEntity,
+        killerData: AttributeData,
+        handle: AttributeHandle
+    ) {
+        SubAttribute.getAttributes()
+            .filterIsInstance<JsAttribute>()
+            .filter { it.containsType(AttributeType.Killer) }
+            .sortedBy { it.priority }
+            .forEach { jsAttr ->
+                val attrValue = killerData[jsAttr.name]
+                if (attrValue > 0) {
+                    DebugLogger.logDamageCalculation("执行 JS Killer 属性: ${jsAttr.name}, 值: $attrValue")
+                    jsAttr.runKiller(killer, victim, handle)
+                }
+            }
     }
 
     private fun processElementalReaction(
