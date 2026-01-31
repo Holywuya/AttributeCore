@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.5.0.0  
+**Version**: 1.6.3.0  
 **Minecraft**: Paper 1.20+  
 **TabooLib**: 6.2.4  
 **Architecture**: SX-Attribute 3.x + AttributePlus JS System
@@ -49,7 +49,7 @@ Located in `plugins/AttributeCore/attributes/`:
 | `thorns.js` | 荆棘 (Thorns) | Defence | Reflect damage to attacker |
 | `execute.js` | 处决 (Execute) | Attack | Extra damage on low HP targets |
 
-### Elemental Attributes (JavaScript)
+### Elemental Damage Attributes (JavaScript)
 
 Located in `plugins/AttributeCore/attributes/`:
 
@@ -60,6 +60,21 @@ Located in `plugins/AttributeCore/attributes/`:
 | `ice_damage.js` | 冰元素伤害 (Ice Damage) | ICE | `§b冰元素伤害 §f50` |
 | `electro_damage.js` | 雷元素伤害 (Electro Damage) | ELECTRO | `§e雷元素伤害 §f50` |
 | `wind_damage.js` | 风元素伤害 (Wind Damage) | WIND | `§a风元素伤害 §f50` |
+
+### Elemental Resistance Attributes (JavaScript)
+
+Located in `plugins/AttributeCore/attributes/`:
+
+| File | Attribute | Element | Lore Format | Reduction Formula |
+|------|-----------|---------|-------------|-------------------|
+| `fire_resistance.js` | 火元素抗性 (Fire Resistance) | N/A | `§c火元素抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+| `water_resistance.js` | 水元素抗性 (Water Resistance) | N/A | `§9水元素抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+| `ice_resistance.js` | 冰元素抗性 (Ice Resistance) | N/A | `§b冰元素抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+| `electro_resistance.js` | 雷元素抗性 (Electro Resistance) | N/A | `§e雷元素抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+| `wind_resistance.js` | 风元素抗性 (Wind Resistance) | N/A | `§a风元素抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+| `physical_resistance.js` | 物理抗性 (Physical Resistance) | N/A | `§f物理抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
+
+**Resistance Example**: 50 fire resistance → `50 / (50 + 100) = 33.3%` damage reduction
 
 ---
 
@@ -140,7 +155,7 @@ function execute(context) {
 
 ### Installation
 
-1. Download `AttributeCore-1.4.0.0.jar`
+1. Download `AttributeCore-1.6.0.0.jar`
 2. Place in server `plugins/` directory
 3. Restart server
 4. Config files generate in `plugins/AttributeCore/`
@@ -183,9 +198,15 @@ var attributeName = "my_attribute";
 // Attribute type: Attack, Defence, Update, Runtime, Killer, Custom, Other
 var attributeType = "Attack";
 
+// PlaceholderAPI suffix (optional, defaults to attributeName)
+var placeholder = "my_attr";
+
 // Lore pattern matching
 var pattern = "我的属性";
 var patternSuffix = "%";
+
+// Element type (optional): FIRE, WATER, ICE, ELECTRO, WIND, PHYSICAL (default)
+var element = "FIRE";
 
 // Called when entity attacks (Attack type)
 function runAttack(attr, attacker, entity, handle) {
@@ -210,10 +231,19 @@ function runAttack(attr, attacker, entity, handle) {
 |--------|-------------|
 | `attr.getRandomValue(entity, handle)` | Get attribute value for entity |
 | `attr.getAttributeValue(entity, handle)` | Get [min, max] value array |
-| `attr.getDamage(entity, handle)` | Get current damage |
-| `attr.setDamage(entity, value, handle)` | Set damage value |
-| `attr.addDamage(entity, value, handle)` | Add to damage |
-| `attr.takeDamage(entity, value, handle)` | Subtract from damage |
+| `attr.getDamage(entity, handle)` | Get total damage |
+| `attr.getDamage(entity, element, handle)` | Get damage for specific element |
+| `attr.setDamage(entity, value, handle)` | Set damage for this attribute's element |
+| `attr.setDamage(entity, element, value, handle)` | Set damage for specific element |
+| `attr.addDamage(entity, value, handle)` | Add to this attribute's element bucket |
+| `attr.addDamage(entity, element, value, handle)` | Add to specific element bucket |
+| `attr.takeDamage(entity, value, handle)` | Subtract from element bucket |
+| `attr.takeDamage(entity, element, value, handle)` | Subtract from specific element |
+| `attr.addFinalDamage(entity, value, handle)` | Add to final total damage (after all calcs) |
+| `attr.takeFinalDamage(entity, value, handle)` | Subtract from final total |
+| `attr.setFinalDamage(entity, value, handle)` | Set final total damage |
+| `attr.getElement()` | Get this attribute's element name |
+| `attr.getElementDisplayName()` | Get element display name (Chinese) |
 | `attr.chance(percent)` | Random chance check (0-100) |
 | `attr.setCancelled(boolean, handle)` | Cancel the event |
 | `attr.heal(entity, amount, handle)` | Heal entity |
@@ -223,10 +253,18 @@ function runAttack(attr, attacker, entity, handle) {
 |--------|-------------|
 | `handle.getAttacker()` | Get attacking entity |
 | `handle.getEntity()` / `handle.getVictim()` | Get victim entity |
-| `handle.getDamage()` | Get current damage value |
-| `handle.setDamage(value)` | Set damage value |
-| `handle.addDamage(value)` | Add to damage |
-| `handle.takeDamage(value)` | Subtract from damage |
+| `handle.getDamage()` | Get total damage (bucket + finalModifier) |
+| `handle.getDamage(element)` | Get damage for specific element |
+| `handle.setDamage(value)` | Set physical damage |
+| `handle.setDamage(element, value)` | Set damage for specific element |
+| `handle.addDamage(value)` | Add to physical damage |
+| `handle.addDamage(element, value)` | Add to specific element |
+| `handle.takeDamage(value)` | Subtract from physical damage |
+| `handle.takeDamage(element, value)` | Subtract from specific element |
+| `handle.addFinalDamage(value)` | Add modifier applied after all calcs |
+| `handle.takeFinalDamage(value)` | Subtract from final modifier |
+| `handle.setFinalDamage(value)` | Set total final damage |
+| `handle.getDamageBucket()` | Get the DamageBucket object |
 | `handle.isCancelled()` | Check if event cancelled |
 | `handle.setCancelled(boolean)` | Cancel the event |
 | `handle.isProjectile()` | Is projectile damage |
@@ -292,6 +330,12 @@ lore:
   - "§b冰元素伤害 §f50"
   - "§e雷元素伤害 §f50"
   - "§a风元素伤害 §f50"
+  - "§c火元素抗性 §f50"
+  - "§9水元素抗性 §f50"
+  - "§b冰元素抗性 §f50"
+  - "§e雷元素抗性 §f50"
+  - "§a风元素抗性 §f50"
+  - "§f物理抗性 §f50"
 ```
 
 ---
@@ -341,7 +385,13 @@ AttributeCore/
     │   ├── water_damage.js
     │   ├── ice_damage.js
     │   ├── electro_damage.js
-    │   └── wind_damage.js
+    │   ├── wind_damage.js
+    │   ├── fire_resistance.js        # Elemental resistance attributes
+    │   ├── water_resistance.js
+    │   ├── ice_resistance.js
+    │   ├── electro_resistance.js
+    │   ├── wind_resistance.js
+    │   └── physical_resistance.js
     └── scripts/                      # Elemental reaction scripts
         ├── vaporize.js               # Fire + Water
         ├── melt.js                   # Fire + Ice
@@ -363,6 +413,76 @@ AttributeCore/
 ---
 
 ## Changelog
+
+### v1.6.3.0 (2026-01-31)
+- **Complete API System** - Added 4 comprehensive API modules for external plugin integration
+- **AttributeCoreAPI** - Main API for entity attributes, item parsing, damage calculation, combat power
+  - Entity attribute queries: `getAttribute()`, `getAttributeFinal()`, `getAttributesBatch()`, `getAllNonZeroAttributes()`
+  - Plugin attribute management: `setPluginAttribute()`, `addPluginAttribute()`, `removePluginAttribute()`, `clearPluginAllData()`
+  - Item parsing: `loadItemData()`, `parseAttributesFromLore()`
+  - Damage system: `buildDamageBucket()`, `getResistances()`, `calculateFinalDamage()`
+  - Combat power: `getCombatPower()`
+- **DamageAPI** - Damage bucket operations for elemental damage system
+  - Bucket creation: `createPhysicalBucket()`, `createElementalBucket()`, `createMixedBucket()`
+  - Damage operations: `addDamage()`, `setDamage()`, `getDamage()`, `multiplyDamage()`
+  - Resistance calculation: `applyResistances()`, `calculateDamageReduction()`, `calculateEffectiveDamage()`
+  - Bucket utilities: `mergeBuckets()`, `cloneBucket()`, `hasElement()`, `getElements()`
+- **AttributeAPI** - Attribute registry queries and metadata access
+  - Attribute listing: `getAll()`, `getAllNames()`, `getByName()`, `getByType()`
+  - JS attributes: `getJsAttributes()`, `getJsAttribute()`, `getJsAttributesByElement()`
+  - Metadata: `getNbtName()`, `getPlaceholder()`, `getPriority()`, `getCombatPowerWeight()`, `getElement()`
+  - Mapping: `getNbtNameMapping()`, `getAttributeNameFromNbt()`, `getAllPlaceholders()`
+- **ElementAPI** - Elemental aura management and reaction triggers
+  - Aura management: `applyAura()`, `getAura()`, `hasAura()`, `consumeAura()`, `clearAura()`
+  - Element queries: `getElement()`, `getElements()`, `getReactiveElements()`
+  - Reaction: `triggerReaction()`
+- All API methods have `@JvmStatic` annotation for Java interoperability
+- Added comprehensive API documentation: `docs/API_USAGE.md`, `docs/DEVELOPER_API.md`
+
+### v1.6.2.0 (2026-01-31)
+- **NBT Attribute Format Refactoring** - Changed NBT key format to use Chinese display names
+- NBT keys now use `pattern` (e.g., `雷元素伤害`) instead of `attributeName` (e.g., `electro_damage`)
+- Percentage attributes detected by `%` suffix in the **value** (e.g., `攻击力: "20%"`)
+- Added `nbtName` property to `SubAttribute` base class for NBT key customization
+- Updated `ItemAttributeReader` to support new NBT format with automatic name mapping
+- **NBT Format Examples**:
+  - Flat value: `AttributeCore.雷元素伤害: 50`
+  - Percent value: `AttributeCore.攻击力: "20%"` (string with % suffix)
+  - Before: `AttributeCore.electro_damage: 50` or `AttributeCore.Percent.attack_damage: 20`
+
+### v1.6.1.0 (2026-01-31)
+- **Elemental Resistance Attributes** - Added 6 resistance attributes for damage reduction
+- Added resistance attributes: `fire_resistance.js`, `water_resistance.js`, `ice_resistance.js`, `electro_resistance.js`, `wind_resistance.js`, `physical_resistance.js`
+- Resistance formula: `damage × (1 - resistance / (resistance + 100))`
+- Resistances auto-applied via `DamageBucket.applyResistances()` - no need for `runDefense()` functions
+- Updated README with resistance attribute documentation and lore examples
+
+### v1.6.0.0 (2026-01-31)
+- **Element-Aware Damage API** - Major API refactoring for elemental damage system
+- **New JS Attribute Configuration**:
+  - Added `var element = "FIRE"` - Explicit element declaration (FIRE, WATER, ICE, ELECTRO, WIND, PHYSICAL)
+  - Added `var placeholder = "name"` - Custom PlaceholderAPI suffix
+- **Enhanced Damage Methods** (AttributePlus-style API):
+  - `addDamage(entity, element, value, handle)` - Add damage to specific element bucket
+  - `takeDamage(entity, element, value, handle)` - Subtract from element bucket
+  - `setDamage(entity, element, value, handle)` - Set element bucket value
+  - `addFinalDamage(entity, value, handle)` - Add to final total (after all calculations)
+  - `takeFinalDamage(entity, value, handle)` - Subtract from final total
+  - `setFinalDamage(entity, value, handle)` - Set final total damage
+  - `attr.getElement()` / `attr.getElementDisplayName()` - Get element info
+- **AttributeHandle Refactoring**:
+  - Now stores `DamageBucket` internally instead of single damage value
+  - `handle.getDamageBucket()` returns the internal damage bucket
+  - `handle.getDamage(element)` gets damage for specific element
+  - `handle.setDamageBucket(bucket)` sets bucket from external source
+- **DamageBucket Enhancement**:
+  - `fromAttributeData()` now uses `JsAttribute.element` configuration first, then fallback to name detection
+- Updated all elemental damage JS files with `element` and `placeholder` configuration
+
+### v1.6.0.1 (2026-01-31)
+- Removed `Element.fromAttributeName()` and related prefix/Chinese name maps
+- Element detection now exclusively uses `JsAttribute.element` configuration
+- Removed fallback logic in `DamageBucket.fromAttributeData()` - defaults to PHYSICAL if element not configured
 
 ### v1.5.0.0 (2026-01-31)
 - **Elemental Damage System** - Added 5 elemental damage attributes (Fire, Water, Ice, Electro, Wind)

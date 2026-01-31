@@ -57,7 +57,7 @@ object DamageListener {
         damageBucket.multiplyAll(preDamageContext.damageMultiplier)
         DebugLogger.logDamageCalculation("PRE_DAMAGE 后: $damageBucket, 倍率: ${preDamageContext.damageMultiplier}")
 
-        val handle = AttributeHandle.fromDamageEvent(attacker, victim, damageBucket.total())
+        val handle = AttributeHandle.fromDamageBucket(attacker, victim, damageBucket)
         handle.setAttackerData(attackerData)
         handle.setEntityData(victimData)
 
@@ -67,7 +67,10 @@ object DamageListener {
             .filter { it.containsType(AttributeType.Attack) && it !is JsAttribute }
             .forEach { it.eventMethod(attackerData, attackEvent) }
 
-        handle.setDamage(attackEvent.damage)
+        if (attackEvent.damage != damageBucket.total()) {
+            val ratio = if (damageBucket.total() > 0) attackEvent.damage / damageBucket.total() else 1.0
+            handle.getDamageBucket().multiplyAll(ratio)
+        }
 
         executeJsAttackAttributes(attacker, victim, attackerData, handle)
 
@@ -77,12 +80,10 @@ object DamageListener {
             return
         }
 
-        val attackDamage = handle.getDamage()
-        if (attackDamage != attackEvent.damage) {
-            val ratio = if (attackEvent.damage > 0) attackDamage / attackEvent.damage else 1.0
-            damageBucket.multiplyAll(ratio)
-            DebugLogger.logDamageCalculation("Attack 阶段后伤害: $attackDamage")
-        }
+        val handleBucket = handle.getDamageBucket()
+        damageBucket.clear()
+        damageBucket.merge(handleBucket)
+        DebugLogger.logDamageCalculation("Attack 阶段后伤害桶: $damageBucket")
 
         processElementalReaction(attacker, victim, damageBucket, attackerData, victimData)
 
@@ -90,7 +91,7 @@ object DamageListener {
         damageBucket.applyResistances(resistances)
         DebugLogger.logDamageCalculation("抗性计算后: $damageBucket")
 
-        handle.setDamage(damageBucket.total())
+        handle.setDamageBucket(damageBucket)
 
         val defenceEvent = DefenceEventData(victim, attacker, event)
         defenceEvent.damage = damageBucket.total()
@@ -98,7 +99,10 @@ object DamageListener {
             .filter { it.containsType(AttributeType.Defence) && it !is JsAttribute }
             .forEach { it.eventMethod(victimData, defenceEvent) }
 
-        handle.setDamage(defenceEvent.damage)
+        if (defenceEvent.damage != damageBucket.total()) {
+            val ratio = if (damageBucket.total() > 0) defenceEvent.damage / damageBucket.total() else 1.0
+            handle.getDamageBucket().multiplyAll(ratio)
+        }
 
         executeJsDefenseAttributes(victim, attacker, victimData, handle)
 
@@ -118,9 +122,10 @@ object DamageListener {
         )
         ScriptManager.executePhase(ScriptPhase.POST_DAMAGE, postDamageContext)
 
-        val finalDamage = handle.getDamage() * postDamageContext.damageMultiplier
+        val baseDamage = handle.getDamage()
+        val finalDamage = baseDamage * postDamageContext.damageMultiplier
         event.damage = finalDamage.coerceAtLeast(0.0)
-        DebugLogger.logDamageCalculation("最终伤害: ${event.damage}")
+        DebugLogger.logDamageCalculation("最终伤害: ${event.damage} (基础: $baseDamage, POST倍率: ${postDamageContext.damageMultiplier})")
     }
 
     @SubscribeEvent
@@ -134,7 +139,7 @@ object DamageListener {
         val handle = AttributeHandle(
             attacker = killer,
             entity = victim,
-            damage = 0.0
+            initialDamage = 0.0
         )
         handle.setAttackerData(killerData)
         handle.setEntityData(victimData)

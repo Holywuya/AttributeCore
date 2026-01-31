@@ -2,6 +2,7 @@ package com.attributecore.script
 
 import com.attributecore.data.AttributeData
 import com.attributecore.data.AttributeType
+import com.attributecore.data.Element
 import com.attributecore.data.SubAttribute
 import com.attributecore.event.EventData
 import com.attributecore.manager.AttributeManager
@@ -22,6 +23,10 @@ class JsAttribute(
     *extractTypes(engine)
 ) {
     private val jsPattern: Pattern?
+    
+    val element: Element
+    
+    override val nbtName: String
 
     init {
         priority = extractInt(engine, "priority", 100)
@@ -34,6 +39,10 @@ class JsAttribute(
         } else {
             createPattern(name, "%")
         }
+        
+        nbtName = patternStr ?: name
+        
+        element = extractElement(engine)
 
         try {
             invocable.invokeFunction("onLoad", this)
@@ -55,7 +64,6 @@ class JsAttribute(
     }
 
     override fun eventMethod(attributeData: AttributeData, eventData: EventData) {
-        // JS 属性通过 AttributeHandle 触发，不在此处处理
     }
 
     fun runAttack(attacker: LivingEntity, entity: LivingEntity, handle: AttributeHandle): Boolean {
@@ -150,12 +158,14 @@ class JsAttribute(
         }
     }
 
-    // ==================== JS API Methods ====================
-    
     fun getRandomValue(entity: LivingEntity, handle: AttributeHandle): Double {
         val data = AttributeManager.getEntityData(entity)
-        val value = data[name]
-        return value
+        return data[name]
+    }
+    
+    fun getRandomValue(entity: LivingEntity, attrName: String, handle: AttributeHandle): Double {
+        val data = AttributeManager.getEntityData(entity)
+        return data[attrName]
     }
 
     fun getAttributeValue(entity: LivingEntity, handle: AttributeHandle): DoubleArray {
@@ -163,20 +173,68 @@ class JsAttribute(
         val value = data[name]
         return doubleArrayOf(value, value)
     }
+    
+    fun getAttributeValue(entity: LivingEntity, attrName: String, handle: AttributeHandle): DoubleArray {
+        val data = AttributeManager.getEntityData(entity)
+        val value = data[attrName]
+        return doubleArrayOf(value, value)
+    }
 
     fun getDamage(entity: LivingEntity, handle: AttributeHandle): Double = handle.getDamage()
+    
+    fun getDamage(entity: LivingEntity, element: String, handle: AttributeHandle): Double {
+        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        return handle.getDamage(elem)
+    }
 
-    fun setDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) = handle.setDamage(value)
+    fun setDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.setDamage(this.element, value)
+    }
+    
+    fun setDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
+        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        handle.setDamage(elem, value)
+    }
 
-    fun addDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) = handle.addDamage(value)
+    fun addDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.addDamage(this.element, value)
+    }
+    
+    fun addDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
+        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        handle.addDamage(elem, value)
+    }
 
-    fun takeDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) = handle.takeDamage(value)
+    fun takeDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.takeDamage(this.element, value)
+    }
+    
+    fun takeDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
+        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        handle.takeDamage(elem, value)
+    }
+    
+    fun addFinalDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.addFinalDamage(value)
+    }
+    
+    fun takeFinalDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.takeFinalDamage(value)
+    }
+    
+    fun setFinalDamage(entity: LivingEntity, value: Double, handle: AttributeHandle) {
+        handle.setFinalDamage(value)
+    }
 
     fun chance(percent: Double): Boolean = ThreadLocalRandom.current().nextDouble(100.0) < percent
 
     fun setCancelled(cancelled: Boolean, handle: AttributeHandle) = handle.setCancelled(cancelled)
     
     fun heal(entity: LivingEntity, amount: Double, handle: AttributeHandle) = handle.heal(entity, amount)
+    
+    fun getElement(): String = element.name
+    
+    fun getElementDisplayName(): String = element.displayName
 
     companion object {
         private fun extractName(engine: ScriptEngine, fallback: String): String {
@@ -209,6 +267,11 @@ class JsAttribute(
                     else -> AttributeType.Other
                 }
             }
+        }
+        
+        private fun extractElement(engine: ScriptEngine): Element {
+            val elementStr = engine.get("element")?.toString() ?: return Element.PHYSICAL
+            return Element.fromString(elementStr) ?: Element.PHYSICAL
         }
 
         private fun extractInt(engine: ScriptEngine, key: String, default: Int): Int {

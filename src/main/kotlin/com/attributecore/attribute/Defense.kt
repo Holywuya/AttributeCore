@@ -13,6 +13,8 @@ class Defense : SubAttribute("defense", AttributeType.Defence) {
         register(this)
     }
 
+    override val nbtName: String = "防御力"
+    
     private val pattern = createPattern("防御力")
 
     override fun loadAttribute(attributeData: AttributeData, lore: String) {

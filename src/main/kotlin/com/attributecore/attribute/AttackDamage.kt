@@ -14,6 +14,8 @@ class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
         register(this)
     }
 
+    override val nbtName: String = "攻击力"
+    
     private val pattern = createPattern("攻击力")
 
     override fun loadAttribute(attributeData: AttributeData, lore: String) {

@@ -3,6 +3,7 @@ package com.attributecore.script
 import com.attributecore.AttributeCore
 import com.attributecore.data.AttributeType
 import com.attributecore.data.SubAttribute
+import com.attributecore.manager.ItemAttributeReader
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
 import taboolib.common.platform.function.getDataFolder
@@ -80,6 +81,7 @@ object JsAttributeLoader {
         }
 
         info("已加载 ${jsAttributes.size} 个 JS 属性")
+        ItemAttributeReader.refreshNbtNameMapping()
     }
 
     private fun loadAttribute(jsFile: File) {
@@ -124,6 +126,7 @@ object JsAttributeLoader {
 
         loadAttributes()
         SubAttribute.resort()
+        ItemAttributeReader.refreshNbtNameMapping()
         info("已重载 JS 属性系统")
     }
 

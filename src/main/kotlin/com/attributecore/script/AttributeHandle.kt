@@ -1,6 +1,8 @@
 package com.attributecore.script
 
 import com.attributecore.data.AttributeData
+import com.attributecore.data.DamageBucket
+import com.attributecore.data.Element
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
@@ -8,7 +10,7 @@ import org.bukkit.entity.Projectile
 class AttributeHandle(
     private val attacker: LivingEntity?,
     private val entity: LivingEntity?,
-    private var damage: Double,
+    initialDamage: Double,
     private val isProjectile: Boolean = false,
     private val isSkillDamage: Boolean = false
 ) {
@@ -16,6 +18,9 @@ class AttributeHandle(
     
     private var attackerData: AttributeData? = null
     private var entityData: AttributeData? = null
+    
+    private val damageBucket: DamageBucket = DamageBucket.physical(initialDamage)
+    private var finalDamageModifier: Double = 0.0
 
     fun getAttackerOrKiller(): LivingEntity? = attacker
     
@@ -25,32 +30,72 @@ class AttributeHandle(
     
     fun getVictim(): LivingEntity? = entity
 
-    fun getDamage(): Double = damage
+    fun getDamage(): Double = damageBucket.total() + finalDamageModifier
     
-    fun getDamage(entity: LivingEntity?): Double = damage
+    fun getDamage(entity: LivingEntity?): Double = getDamage()
+    
+    fun getDamage(element: Element): Double = damageBucket[element]
 
     fun setDamage(value: Double) {
-        damage = value.coerceAtLeast(0.0)
+        damageBucket.clear()
+        damageBucket[Element.PHYSICAL] = value.coerceAtLeast(0.0)
     }
     
     fun setDamage(entity: LivingEntity?, value: Double) {
-        damage = value.coerceAtLeast(0.0)
+        setDamage(value)
+    }
+    
+    fun setDamage(element: Element, value: Double) {
+        damageBucket[element] = value.coerceAtLeast(0.0)
     }
 
     fun addDamage(value: Double) {
-        damage = (damage + value).coerceAtLeast(0.0)
+        damageBucket.add(Element.PHYSICAL, value)
     }
     
     fun addDamage(entity: LivingEntity?, value: Double) {
-        damage = (damage + value).coerceAtLeast(0.0)
+        addDamage(value)
+    }
+    
+    fun addDamage(element: Element, value: Double) {
+        damageBucket.add(element, value)
     }
 
     fun takeDamage(value: Double) {
-        damage = (damage - value).coerceAtLeast(0.0)
+        val current = damageBucket[Element.PHYSICAL]
+        damageBucket[Element.PHYSICAL] = (current - value).coerceAtLeast(0.0)
     }
     
     fun takeDamage(entity: LivingEntity?, value: Double) {
-        damage = (damage - value).coerceAtLeast(0.0)
+        takeDamage(value)
+    }
+    
+    fun takeDamage(element: Element, value: Double) {
+        val current = damageBucket[element]
+        damageBucket[element] = (current - value).coerceAtLeast(0.0)
+    }
+    
+    fun addFinalDamage(value: Double) {
+        finalDamageModifier += value
+    }
+    
+    fun takeFinalDamage(value: Double) {
+        finalDamageModifier -= value
+    }
+    
+    fun setFinalDamage(value: Double) {
+        finalDamageModifier = 0.0
+        damageBucket.clear()
+        damageBucket[Element.PHYSICAL] = value.coerceAtLeast(0.0)
+    }
+    
+    fun getFinalDamageModifier(): Double = finalDamageModifier
+    
+    fun getDamageBucket(): DamageBucket = damageBucket
+    
+    fun setDamageBucket(bucket: DamageBucket) {
+        damageBucket.clear()
+        damageBucket.merge(bucket)
     }
 
     fun isCancelled(): Boolean = cancelled
@@ -105,9 +150,25 @@ class AttributeHandle(
             return AttributeHandle(
                 attacker = attacker,
                 entity = victim,
-                damage = damage,
+                initialDamage = damage,
                 isProjectile = projectile != null
             )
+        }
+        
+        fun fromDamageBucket(
+            attacker: LivingEntity?,
+            victim: LivingEntity,
+            bucket: DamageBucket,
+            projectile: Projectile? = null
+        ): AttributeHandle {
+            return AttributeHandle(
+                attacker = attacker,
+                entity = victim,
+                initialDamage = 0.0,
+                isProjectile = projectile != null
+            ).apply {
+                setDamageBucket(bucket)
+            }
         }
     }
 }

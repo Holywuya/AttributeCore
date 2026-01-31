@@ -7,6 +7,15 @@ import org.bukkit.inventory.ItemStack
 import taboolib.module.nms.getItemTag
 
 object ItemAttributeReader {
+    
+    private val nbtNameToAttributeName = mutableMapOf<String, String>()
+    
+    fun refreshNbtNameMapping() {
+        nbtNameToAttributeName.clear()
+        SubAttribute.getAttributes().forEach { attr ->
+            nbtNameToAttributeName[attr.nbtName] = attr.name
+        }
+    }
 
     fun readItem(item: ItemStack?): AttributeData {
         val data = AttributeData()
@@ -40,23 +49,13 @@ object ItemAttributeReader {
             val attrs = attributeSection as? Map<String, Any> ?: return
 
             attrs.forEach { (key, value) ->
-                when {
-                    key == "Percent" && value is Map<*, *> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        (value as Map<String, Any>).forEach { (pKey, pValue) ->
-                            val doubleValue = parseNumber(pValue)
-                            data.addPercent(pKey, doubleValue)
-                        }
-                    }
-                    key.endsWith("_percent") -> {
-                        val baseKey = key.removeSuffix("_percent")
-                        val doubleValue = parseNumber(value)
-                        data.addPercent(baseKey, doubleValue)
-                    }
-                    else -> {
-                        val doubleValue = parseNumber(value)
-                        data.add(key, doubleValue)
-                    }
+                val attrName = nbtNameToAttributeName[key] ?: key
+                val (numericValue, isPercent) = parseNumberWithPercent(value)
+                
+                if (isPercent) {
+                    data.addPercent(attrName, numericValue)
+                } else {
+                    data.add(attrName, numericValue)
                 }
             }
         }
@@ -67,6 +66,22 @@ object ItemAttributeReader {
             is Number -> value.toDouble()
             is String -> value.toDoubleOrNull() ?: 0.0
             else -> 0.0
+        }
+    }
+    
+    private fun parseNumberWithPercent(value: Any): Pair<Double, Boolean> {
+        return when (value) {
+            is Number -> Pair(value.toDouble(), false)
+            is String -> {
+                val trimmed = value.trim()
+                if (trimmed.endsWith("%")) {
+                    val numStr = trimmed.removeSuffix("%").trim()
+                    Pair(numStr.toDoubleOrNull() ?: 0.0, true)
+                } else {
+                    Pair(trimmed.toDoubleOrNull() ?: 0.0, false)
+                }
+            }
+            else -> Pair(0.0, false)
         }
     }
 }

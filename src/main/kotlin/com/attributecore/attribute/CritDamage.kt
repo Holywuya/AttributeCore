@@ -12,6 +12,8 @@ class CritDamage : SubAttribute("crit_damage", AttributeType.Other) {
         register(this)
     }
 
+    override val nbtName: String = "暴击伤害"
+    
     private val pattern = createPattern("暴击伤害", "%")
 
     override fun loadAttribute(attributeData: AttributeData, lore: String) {

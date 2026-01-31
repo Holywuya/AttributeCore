@@ -1,5 +1,7 @@
 package com.attributecore.data
 
+import com.attributecore.data.SubAttribute
+import com.attributecore.script.JsAttribute
 import java.util.EnumMap
 
 /**
@@ -140,14 +142,23 @@ data class DamageBucket(
 
         /**
          * 从 AttributeData 构建伤害桶
+         * 使用 JsAttribute.element 配置确定元素类型
          */
         fun fromAttributeData(data: AttributeData): DamageBucket {
             val bucket = DamageBucket()
             
-            // 遍历所有属性，根据属性名推断元素类型
+            val jsAttrElements = SubAttribute.getAttributes()
+                .filterIsInstance<JsAttribute>()
+                .associate { it.name to it.element }
+            
             data.getAll().forEach { (key, value) ->
-                if (key.endsWith("_damage") || key == "attack_damage" || key.contains("攻击力")) {
-                    val element = Element.fromAttributeName(key)
+                if (value <= 0) return@forEach
+                
+                val isAttackDamage = key == "attack_damage" || key.contains("攻击力")
+                val isDamageAttr = key.endsWith("_damage") || key.contains("伤害")
+                
+                if (isAttackDamage || isDamageAttr) {
+                    val element = jsAttrElements[key] ?: Element.PHYSICAL
                     bucket.add(element, value)
                 }
             }

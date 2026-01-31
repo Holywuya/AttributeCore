@@ -35,6 +35,12 @@ abstract class SubAttribute(
      * 占位符名称（用于 PlaceholderAPI）
      */
     open val placeholder: String = name
+    
+    /**
+     * NBT 属性名称（用于 NBT 读写，默认等于 name）
+     */
+    open val nbtName: String
+        get() = name
 
     protected var config: YamlConfiguration? = null
 

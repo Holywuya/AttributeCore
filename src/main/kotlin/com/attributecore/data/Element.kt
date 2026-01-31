@@ -50,44 +50,6 @@ enum class Element(
     }
 
     companion object {
-        private val prefixMap = mapOf(
-            "fire_" to FIRE,
-            "water_" to WATER,
-            "ice_" to ICE,
-            "electro_" to ELECTRO,
-            "wind_" to WIND
-        )
-
-        private val cnNameMap = mapOf(
-            "火" to FIRE,
-            "水" to WATER,
-            "冰" to ICE,
-            "雷" to ELECTRO,
-            "风" to WIND,
-            "物理" to PHYSICAL
-        )
-
-        /**
-         * 根据属性名推断元素类型
-         * 例如: "fire_damage" -> FIRE, "攻击力" -> PHYSICAL
-         */
-        fun fromAttributeName(name: String): Element {
-            // 检查英文前缀
-            for ((prefix, element) in prefixMap) {
-                if (name.startsWith(prefix, ignoreCase = true)) {
-                    return element
-                }
-            }
-            // 检查中文名
-            for ((cnName, element) in cnNameMap) {
-                if (name.contains(cnName)) {
-                    return element
-                }
-            }
-            // 默认为物理
-            return PHYSICAL
-        }
-
         /**
          * 根据配置键获取元素
          */
@@ -100,6 +62,19 @@ enum class Element(
          */
         fun reactiveElements(): List<Element> {
             return entries.filter { it != PHYSICAL }
+        }
+
+        /**
+         * 根据字符串名称获取元素类型
+         * 支持 enum 名称、configKey、displayName
+         * @param name 元素名称字符串 (如 "FIRE", "fire", "火")
+         * @return 对应的 Element，如果找不到返回 null
+         */
+        fun fromString(name: String): Element? {
+            val normalized = name.trim().uppercase()
+            return entries.find { it.name == normalized }
+                ?: entries.find { it.configKey.equals(name, ignoreCase = true) }
+                ?: entries.find { it.displayName == name }
         }
     }
 }

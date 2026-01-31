@@ -1,6 +1,7 @@
 package com.attributecore
 
 import com.attributecore.attribute.*
+import com.attributecore.manager.ItemAttributeReader
 import com.attributecore.script.JsAttributeLoader
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
@@ -21,6 +22,8 @@ object AttributeCore : Plugin() {
         Defense()
         CritChance()
         CritDamage()
+        
+        ItemAttributeReader.refreshNbtNameMapping()
 
         val coreCount = com.attributecore.data.SubAttribute.getAttributes().size
         info("已加载 $coreCount 个核心属性")
