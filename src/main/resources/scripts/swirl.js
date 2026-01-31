@@ -2,6 +2,8 @@
 // 触发条件: 风元素攻击附着任意元素光环的目标
 // 效果: 造成 1.3 倍伤害 + 传播元素光环到周围敌人
 
+var phases = ["REACTION"];
+
 function canTrigger(context) {
     // 风元素触发任意其他元素光环
     return context.triggerElement === "WIND" && 

@@ -242,8 +242,8 @@ object DamageListener {
                 attackerData = attackerData,
                 victimData = victimData,
                 damageBucket = damageBucket,
-                triggerElement = triggerElement,
-                auraElement = existingAura.element
+                _triggerElement = triggerElement,
+                _auraElement = existingAura.element
             )
             ScriptManager.executePhase(ScriptPhase.REACTION, reactionContext)
 

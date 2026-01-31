@@ -167,18 +167,30 @@ object ScriptManager {
     }
 
     fun executePhase(phase: ScriptPhase, context: ScriptContext) {
-        scripts.values
-            .filter { it.phases.contains(phase) }
-            .forEach { script ->
-                try {
+        val matchingScripts = scripts.values.filter { it.phases.contains(phase) }
+        if (phase == ScriptPhase.REACTION) {
+            info("元素反应阶段: 匹配脚本数=${matchingScripts.size}, 触发=${context.triggerElement}, 光环=${context.auraElement}")
+        }
+        
+        matchingScripts.forEach { script ->
+            try {
+                if (phase == ScriptPhase.REACTION) {
+                    info("执行反应脚本: ${script.name}")
+                    script.invocable.invokeFunction("execute", context)
+                    info("反应脚本执行完成: ${script.name}, 倍率=${context.damageMultiplier}")
+                } else {
                     val methodName = "on${phase.name.lowercase().replaceFirstChar { it.uppercase() }}"
                     script.invocable.invokeFunction(methodName, context)
-                } catch (e: NoSuchMethodException) {
-                    // 方法不存在，跳过
-                } catch (e: Exception) {
-                    warning("脚本 ${script.name} 执行 $phase 阶段失败: ${e.message}")
                 }
+            } catch (e: NoSuchMethodException) {
+                if (phase == ScriptPhase.REACTION) {
+                    info("脚本 ${script.name} 没有 execute 函数")
+                }
+            } catch (e: Exception) {
+                warning("脚本 ${script.name} 执行 $phase 阶段失败: ${e.message}")
+                e.printStackTrace()
             }
+        }
     }
 
     fun executeExpression(expression: String, variables: Map<String, Any?> = emptyMap()): Any? {

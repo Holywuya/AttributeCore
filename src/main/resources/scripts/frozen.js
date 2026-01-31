@@ -2,6 +2,8 @@
 // 触发条件: 冰元素攻击附着水元素光环的目标
 // 效果: 造成 1.2 倍伤害 + 冻结目标 3 秒 (减速 80%)
 
+var phases = ["REACTION"];
+
 function canTrigger(context) {
     // 冰元素触发水元素光环
     return context.triggerElement === "ICE" && context.auraElement === "WATER";

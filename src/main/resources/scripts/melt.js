@@ -2,6 +2,8 @@
 // 触发条件: 火元素攻击附着冰元素光环的目标
 // 效果: 造成 2 倍伤害
 
+var phases = ["REACTION"];
+
 function canTrigger(context) {
     // 火元素触发冰元素光环
     return context.triggerElement === "FIRE" && context.auraElement === "ICE";

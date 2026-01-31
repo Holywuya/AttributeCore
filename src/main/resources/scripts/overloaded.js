@@ -2,6 +2,8 @@
 // 触发条件: 雷元素攻击附着火元素光环的目标
 // 效果: 造成 1.5 倍伤害 + 范围爆炸伤害
 
+var phases = ["REACTION"];
+
 function canTrigger(context) {
     // 雷元素触发火元素光环
     return context.triggerElement === "ELECTRO" && context.auraElement === "FIRE";
