@@ -1,22 +1,40 @@
 package com.attributecore.data
 
 import com.attributecore.event.EventData
-import com.attributecore.manager.AttributeRegistry
 import com.attributecore.util.DebugLogger
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.io.File
 import java.util.regex.Pattern
 
+/**
+ * 属性抽象基类
+ * 参考 AttributePlus 的 SubAttribute 设计
+ *
+ * @property name 属性唯一标识符
+ * @property types 属性类型（支持多类型）
+ */
 abstract class SubAttribute(
     val name: String,
     vararg val types: AttributeType
 ) : Comparable<SubAttribute> {
-    var priority: Int = -1
-        internal set
+    /**
+     * 属性优先级（数值越小优先级越高）
+     * 在配置文件或 JS 脚本中指定
+     */
+    var priority: Int = 100
+        protected set
 
+    /**
+     * 战斗力权重
+     */
     var combatPowerWeight: Double = 1.0
         protected set
+    
+    /**
+     * 占位符名称（用于 PlaceholderAPI）
+     */
+    open val placeholder: String = name
 
     protected var config: YamlConfiguration? = null
 
@@ -27,11 +45,10 @@ abstract class SubAttribute(
 
         fun getByName(name: String): SubAttribute? = attributes.find { it.name == name }
 
+        /**
+         * 注册属性（简化版，直接添加到列表并排序）
+         */
         fun register(attribute: SubAttribute) {
-            AttributeRegistry.register(attribute)
-        }
-        
-        internal fun registerInternal(attribute: SubAttribute) {
             val existing = attributes.find { it.name == attribute.name }
             if (existing != null) {
                 attributes.remove(existing)
@@ -39,9 +56,19 @@ abstract class SubAttribute(
             attributes.add(attribute)
             attributes.sortBy { it.priority }
         }
-        
-        internal fun resort() {
+
+        /**
+         * 重新排序属性列表
+         */
+        fun resort() {
             attributes.sortBy { it.priority }
+        }
+        
+        /**
+         * 清空所有属性（用于重载）
+         */
+        fun clear() {
+            attributes.clear()
         }
     }
 
