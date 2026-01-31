@@ -101,4 +101,26 @@ abstract class SubAttribute(
             return null
         }
     }
+
+    data class ParsedValue(val value: Double, val isPercent: Boolean)
+
+    protected fun matchValueWithPercent(lore: String, pattern: Pattern): ParsedValue? {
+        val matcher = pattern.matcher(lore)
+        if (matcher.find()) {
+            val value = matcher.group(1).toDoubleOrNull() ?: return null
+            val isPercent = try {
+                matcher.group(2)?.contains("%") == true
+            } catch (e: Exception) {
+                lore.contains("%")
+            }
+            DebugLogger.logRegexMatch("匹配成功! Lore: $lore, 值: $value, 百分比: $isPercent")
+            return ParsedValue(value, isPercent)
+        }
+        return null
+    }
+
+    protected fun createPatternWithPercent(prefix: String): Pattern {
+        val regex = "(?:§.)*${prefix}(?:§.)*[：: ]*(?:§.)*([+-]?\\d+\\.?\\d*)(?:§.)*(%?)"
+        return Pattern.compile(regex)
+    }
 }
