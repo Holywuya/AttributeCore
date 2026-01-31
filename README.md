@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.4.0.0  
+**Version**: 1.5.0.0  
 **Minecraft**: Paper 1.20+  
 **TabooLib**: 6.2.4  
 **Architecture**: SX-Attribute 3.x + AttributePlus JS System
@@ -14,6 +14,7 @@ AttributeCore is a lightweight Minecraft attribute system plugin built with **Ko
 ### Core Features
 
 - **JavaScript Custom Attributes** - Users can create custom attributes via `.js` files
+- **Elemental Damage & Reaction System** - Genshin Impact-inspired elemental combat system
 - **PlaceholderAPI Integration** - Auto-register all attribute placeholders via TabooLib
 - **SX-Attribute Compatible Architecture** - Based on SX-Attribute 3.x design
 - **Lore Attribute Reading** - Supports color code formats (e.g., `§c攻击力 §f100`)
@@ -47,6 +48,91 @@ Located in `plugins/AttributeCore/attributes/`:
 | `dodge.js` | 闪避 (Dodge) | Defence | Chance to avoid damage |
 | `thorns.js` | 荆棘 (Thorns) | Defence | Reflect damage to attacker |
 | `execute.js` | 处决 (Execute) | Attack | Extra damage on low HP targets |
+
+### Elemental Attributes (JavaScript)
+
+Located in `plugins/AttributeCore/attributes/`:
+
+| File | Attribute | Element | Lore Format |
+|------|-----------|---------|-------------|
+| `fire_damage.js` | 火元素伤害 (Fire Damage) | FIRE | `§c火元素伤害 §f50` |
+| `water_damage.js` | 水元素伤害 (Water Damage) | WATER | `§9水元素伤害 §f50` |
+| `ice_damage.js` | 冰元素伤害 (Ice Damage) | ICE | `§b冰元素伤害 §f50` |
+| `electro_damage.js` | 雷元素伤害 (Electro Damage) | ELECTRO | `§e雷元素伤害 §f50` |
+| `wind_damage.js` | 风元素伤害 (Wind Damage) | WIND | `§a风元素伤害 §f50` |
+
+---
+
+## Elemental Reaction System
+
+Inspired by Genshin Impact's elemental combat mechanics.
+
+### How It Works
+
+1. **Elemental Aura Application**: When you hit an enemy with elemental damage, an aura is applied to them for 5 seconds.
+2. **Elemental Reactions**: When you hit an enemy with a **different** element, a reaction triggers!
+3. **Reaction Effects**: Each reaction has unique damage multipliers and visual effects.
+
+### Available Reactions
+
+Located in `plugins/AttributeCore/scripts/`:
+
+| Reaction | Trigger | Effect | Visual |
+|----------|---------|--------|--------|
+| **蒸发 (Vaporize)** | Fire → Water Aura | 2.0x damage | Steam clouds + fire particles |
+| **融化 (Melt)** | Fire → Ice Aura | 2.0x damage | Water droplets + fire particles |
+| **超载 (Overloaded)** | Electro → Fire Aura | 1.5x damage + AoE explosion (3 blocks) | Explosion + lightning particles |
+| **冻结 (Frozen)** | Ice → Water Aura | 1.2x damage + Slowness IV (3s) | Ice crystals + blue particles |
+| **扩散 (Swirl)** | Wind → Any Aura | 1.3x damage + Spread aura to nearby (4 blocks) | Wind spiral + element particles |
+
+### Elemental Combat Example
+
+```
+Player attacks zombie with Fire Damage (50)
+→ Zombie gets FIRE aura (5 seconds)
+
+Player attacks same zombie with Water Damage (50)
+→ Vaporize reaction triggers!
+→ Water damage × 2.0 = 100 total damage
+→ "§c§l[蒸发] §e触发! 造成 §c2倍 §e伤害!" message appears
+→ Steam particle effects play
+→ Fire aura is consumed
+```
+
+### Creating Custom Reactions
+
+Create a `.js` file in `plugins/AttributeCore/scripts/`:
+
+```javascript
+function canTrigger(context) {
+    return context.triggerElement === "FIRE" && context.auraElement === "ICE";
+}
+
+function execute(context) {
+    if (!canTrigger(context)) return;
+    
+    context.damageMultiplier = 2.0;
+    
+    if (context.attacker && context.attacker.getType() === "PLAYER") {
+        context.attacker.sendMessage("Custom reaction triggered!");
+    }
+    
+    var location = context.victim.getLocation();
+    var world = location.getWorld();
+    world.spawnParticle("FLAME", location.getX(), location.getY() + 1, location.getZ(), 10);
+}
+```
+
+**Available Context Properties:**
+- `context.attacker` - Attacking LivingEntity
+- `context.victim` - Victim LivingEntity
+- `context.attackerData` - Attacker's AttributeData
+- `context.victimData` - Victim's AttributeData
+- `context.damageBucket` - DamageBucket (damage breakdown)
+- `context.triggerElement` - Attacking element (FIRE, WATER, ICE, ELECTRO, WIND)
+- `context.auraElement` - Existing aura on victim
+- `context.damageMultiplier` - Modify this to change damage (default: 1.0)
+- `context.cancelled` - Set to true to cancel reaction
 
 ---
 
@@ -201,6 +287,11 @@ lore:
   - "§a闪避 §f15%"
   - "§5荆棘 §f20%"
   - "§4处决 §f30%"
+  - "§c火元素伤害 §f50"
+  - "§9水元素伤害 §f50"
+  - "§b冰元素伤害 §f50"
+  - "§e雷元素伤害 §f50"
+  - "§a风元素伤害 §f50"
 ```
 
 ---
@@ -214,7 +305,10 @@ AttributeCore/
 │   ├── data/
 │   │   ├── AttributeData.kt          # Attribute data container
 │   │   ├── AttributeType.kt          # Attribute type enum
-│   │   └── SubAttribute.kt           # Attribute base class
+│   │   ├── SubAttribute.kt           # Attribute base class
+│   │   ├── DamageBucket.kt           # Damage breakdown tracker
+│   │   ├── Element.kt                # Element enum (FIRE, WATER, ICE, ELECTRO, WIND)
+│   │   └── ElementalAura.kt          # Elemental aura manager
 │   ├── manager/
 │   │   ├── AttributeManager.kt       # Attribute manager
 │   │   └── ItemAttributeReader.kt    # Item attribute reader
@@ -238,11 +332,22 @@ AttributeCore/
 │       └── ScriptAPI.kt              # Script API
 └── src/main/resources/
     ├── config.yml                    # Main config
-    └── attributes/                   # Default JS attributes
-        ├── lifesteal.js
-        ├── dodge.js
-        ├── thorns.js
-        └── execute.js
+    ├── attributes/                   # Default JS attributes
+    │   ├── lifesteal.js
+    │   ├── dodge.js
+    │   ├── thorns.js
+    │   ├── execute.js
+    │   ├── fire_damage.js            # Elemental damage attributes
+    │   ├── water_damage.js
+    │   ├── ice_damage.js
+    │   ├── electro_damage.js
+    │   └── wind_damage.js
+    └── scripts/                      # Elemental reaction scripts
+        ├── vaporize.js               # Fire + Water
+        ├── melt.js                   # Fire + Ice
+        ├── overloaded.js             # Electro + Fire
+        ├── frozen.js                 # Ice + Water
+        └── swirl.js                  # Wind + Any
 ```
 
 ---
@@ -258,6 +363,18 @@ AttributeCore/
 ---
 
 ## Changelog
+
+### v1.5.0.0 (2026-01-31)
+- **Elemental Damage System** - Added 5 elemental damage attributes (Fire, Water, Ice, Electro, Wind)
+- **Elemental Reaction System** - Genshin Impact-inspired reactions with visual effects
+- Added 5 elemental damage attributes: `fire_damage.js`, `water_damage.js`, `ice_damage.js`, `electro_damage.js`, `wind_damage.js`
+- Added 5 reaction scripts: `vaporize.js` (Fire+Water), `melt.js` (Fire+Ice), `overloaded.js` (Electro+Fire), `frozen.js` (Ice+Water), `swirl.js` (Wind+Any)
+- Added `DamageBucket.kt` - Tracks damage breakdown by element
+- Added `Element.kt` - Element enum (FIRE, WATER, ICE, ELECTRO, WIND)
+- Added `ElementalAura.kt` - Manages elemental auras on entities (5 second duration)
+- Elemental reactions trigger when attacking with different element than target's aura
+- Each reaction has unique effects: damage multipliers, AoE explosions, status effects, aura spreading
+- Updated ScriptManager to auto-release elemental reaction scripts
 
 ### v1.4.0.0 (2026-01-31)
 - **PlaceholderAPI Integration** - Auto-register all attribute placeholders via TabooLib

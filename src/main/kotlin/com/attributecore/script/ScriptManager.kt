@@ -52,17 +52,11 @@ object ScriptManager {
         }
 
         val defaultScripts = listOf(
-            "example_attack_damage.js",
-            "example_defense.js",
-            "example_crit_chance.js",
-            "example_crit_damage.js",
-            "example_lifesteal.js",
-            "example_fire_damage.js",
-            "example_armor_penetration.js",
-            "example_damage_reduction.js",
-            "example_health_regen.js",
-            "example_advanced_conditional.js",
-            "example_advanced_chain_reaction.js"
+            "vaporize.js",
+            "melt.js",
+            "overloaded.js",
+            "frozen.js",
+            "swirl.js"
         )
         
         defaultScripts.forEach { scriptName ->
