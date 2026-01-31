@@ -10,7 +10,6 @@ import org.bukkit.entity.Player
 
 class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
     init {
-        priority = 0
         combatPowerWeight = 1.5
         register(this)
     }

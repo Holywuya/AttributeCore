@@ -1,11 +1,10 @@
 package com.attributecore.data
 
 import com.attributecore.event.EventData
+import com.attributecore.manager.AttributeRegistry
 import com.attributecore.util.DebugLogger
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
-import taboolib.common.LifeCycle
-import taboolib.common.platform.Awake
 import java.io.File
 import java.util.regex.Pattern
 
@@ -28,15 +27,20 @@ abstract class SubAttribute(
 
         fun getByName(name: String): SubAttribute? = attributes.find { it.name == name }
 
-        internal fun register(attribute: SubAttribute) {
-            if (attribute.priority < 0) {
-                return
-            }
-            val existing = attributes.find { it.priority == attribute.priority }
+        fun register(attribute: SubAttribute) {
+            AttributeRegistry.register(attribute)
+        }
+        
+        internal fun registerInternal(attribute: SubAttribute) {
+            val existing = attributes.find { it.name == attribute.name }
             if (existing != null) {
                 attributes.remove(existing)
             }
             attributes.add(attribute)
+            attributes.sortBy { it.priority }
+        }
+        
+        internal fun resort() {
             attributes.sortBy { it.priority }
         }
     }

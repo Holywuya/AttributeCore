@@ -6,13 +6,13 @@ import com.attributecore.data.SubAttribute
 import com.attributecore.event.EventData
 import org.bukkit.entity.Player
 
-class CritDamage : SubAttribute("crit_damage", AttributeType.Other) {
+class Thorns : SubAttribute("thorns", AttributeType.Defence) {
     init {
-        combatPowerWeight = 0.5
+        combatPowerWeight = 0.4
         register(this)
     }
 
-    private val pattern = createPattern("暴击伤害", "%")
+    private val pattern = createPattern("荆棘", "%")
 
     override fun loadAttribute(attributeData: AttributeData, lore: String) {
         matchValue(lore, pattern)?.let {
@@ -25,12 +25,10 @@ class CritDamage : SubAttribute("crit_damage", AttributeType.Other) {
 
     override fun getPlaceholder(attributeData: AttributeData, player: Player, identifier: String): Any? {
         return when (identifier) {
-            "crit_damage" -> attributeData[name]
+            "thorns" -> attributeData[name]
             else -> null
         }
     }
 
-    override fun getPlaceholders(): List<String> {
-        return listOf("crit_damage")
-    }
+    override fun getPlaceholders(): List<String> = listOf("thorns")
 }

@@ -12,15 +12,19 @@ object AttributeCore : Plugin() {
         private set
 
     override fun onEnable() {
-        info("AttributeCore 已启动 - 版本 1.2.0.0")
+        info("AttributeCore 已启动 - 版本 1.2.1.0")
         info("基于 SX-Attribute 3.x 架构重构")
 
         AttackDamage()
         Defense()
         CritChance()
         CritDamage()
+        LifeSteal()
+        DodgeChance()
+        Thorns()
+        ExecuteThreshold()
 
-        info("已加载 4 个核心属性")
+        info("已加载 ${com.attributecore.data.SubAttribute.getAttributes().size} 个核心属性")
     }
 
     override fun onDisable() {

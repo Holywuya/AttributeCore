@@ -10,7 +10,6 @@ import kotlin.random.Random
 
 class CritChance : SubAttribute("crit_chance", AttributeType.Attack) {
     init {
-        priority = 2
         combatPowerWeight = 0.8
         register(this)
     }
