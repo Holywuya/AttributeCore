@@ -3,11 +3,128 @@ package com.attributecore.data
 import com.attributecore.AttributeCore
 
 /**
- * 元素类型枚举
+ * 元素常量和工具类
  * 
- * 定义游戏中所有可用的元素类型
- * 物理 (PHYSICAL) 作为默认元素，不参与元素反应
+ * 元素不再是硬编码的枚举，而是基于字符串的动态系统
+ * 任何属性都可以通过设置 element 配置来定义自己的元素类型
+ * 
+ * 预定义的元素常量仅用于便利，用户可以定义任意元素名称
  */
+object Elements {
+    const val PHYSICAL = "PHYSICAL"
+    const val FIRE = "FIRE"
+    const val WATER = "WATER"
+    const val ICE = "ICE"
+    const val ELECTRO = "ELECTRO"
+    const val WIND = "WIND"
+    
+    private val displayNames = mapOf(
+        PHYSICAL to "物理",
+        FIRE to "火",
+        WATER to "水",
+        ICE to "冰",
+        ELECTRO to "雷",
+        WIND to "风"
+    )
+    
+    private val colors = mapOf(
+        PHYSICAL to "§f",
+        FIRE to "§c",
+        WATER to "§9",
+        ICE to "§b",
+        ELECTRO to "§5",
+        WIND to "§a"
+    )
+    
+    private val normalizeCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    
+    /**
+     * 获取元素的显示名称
+     * 如果是自定义元素，返回元素名本身
+     */
+    fun getDisplayName(element: String): String {
+        return displayNames[element.uppercase()] ?: element
+    }
+    
+    /**
+     * 获取元素的颜色代码
+     * 如果是自定义元素，返回白色
+     */
+    fun getColor(element: String): String {
+        return colors[element.uppercase()] ?: "§f"
+    }
+    
+    /**
+     * 获取带颜色的显示名称
+     */
+    fun getColoredName(element: String): String {
+        return "${getColor(element)}${getDisplayName(element)}"
+    }
+    
+    /**
+     * 检查是否为物理元素
+     */
+    fun isPhysical(element: String): Boolean {
+        return element.uppercase() == PHYSICAL
+    }
+    
+    /**
+     * 检查是否为非物理元素（可参与反应）
+     */
+    fun isReactive(element: String): Boolean {
+        return !isPhysical(element)
+    }
+    
+    /**
+     * 获取元素的抗性属性名
+     */
+    fun resistanceKey(element: String): String {
+        return "${element.lowercase()}_resistance"
+    }
+    
+    /**
+     * 获取元素的伤害属性名
+     */
+    fun damageKey(element: String): String {
+        return "${element.lowercase()}_damage"
+    }
+    
+    fun penetrationKey(element: String): String {
+        return "${element.lowercase()}_penetration"
+    }
+    
+    /**
+     * 获取元素的光环衰减速率（每秒）
+     * 可在配置文件中自定义
+     */
+    fun getDecayRate(element: String): Double {
+        return AttributeCore.config.getDouble(
+            "elements.types.${element.lowercase()}.aura-decay-rate",
+            1.0
+        )
+    }
+    
+    /**
+     * 获取元素的抗性上限
+     * 可在配置文件中自定义
+     */
+    fun getMaxResistance(element: String): Double {
+        return AttributeCore.config.getDouble(
+            "elements.types.${element.lowercase()}.max-resistance",
+            80.0
+        )
+    }
+    
+    fun normalize(element: String): String {
+        return normalizeCache.getOrPut(element) { element.trim().uppercase() }
+    }
+}
+
+/**
+ * 保留旧的 Element 枚举用于向后兼容
+ * @deprecated 使用 Elements 对象和字符串元素名代替
+ */
+@Deprecated("Use Elements object with String element names instead")
 enum class Element(
     val displayName: String,
     val color: String,
@@ -20,56 +137,27 @@ enum class Element(
     ELECTRO("雷", "§5", "electro"),
     WIND("风", "§a", "wind");
 
-    /**
-     * 获取带颜色的显示名称
-     */
     fun coloredName(): String = "$color$displayName"
-
-    /**
-     * 获取该元素对应的抗性属性名
-     */
     fun resistanceKey(): String = "${configKey}_resistance"
-
-    /**
-     * 获取该元素对应的伤害属性名
-     */
     fun damageKey(): String = "${configKey}_damage"
 
-    /**
-     * 获取附着衰减速率（每秒）
-     */
     fun getDecayRate(): Double {
-        return AttributeCore.config.getDouble("elements.types.${configKey}.aura-decay-rate", 1.0)
+        return Elements.getDecayRate(name)
     }
 
-    /**
-     * 获取抗性上限
-     */
     fun getMaxResistance(): Double {
-        return AttributeCore.config.getDouble("elements.types.${configKey}.max-resistance", 80.0)
+        return Elements.getMaxResistance(name)
     }
 
     companion object {
-        /**
-         * 根据配置键获取元素
-         */
         fun fromConfigKey(key: String): Element? {
             return entries.find { it.configKey.equals(key, ignoreCase = true) }
         }
 
-        /**
-         * 获取所有非物理元素（可参与反应的元素）
-         */
         fun reactiveElements(): List<Element> {
             return entries.filter { it != PHYSICAL }
         }
 
-        /**
-         * 根据字符串名称获取元素类型
-         * 支持 enum 名称、configKey、displayName
-         * @param name 元素名称字符串 (如 "FIRE", "fire", "火")
-         * @return 对应的 Element，如果找不到返回 null
-         */
         fun fromString(name: String): Element? {
             val normalized = name.trim().uppercase()
             return entries.find { it.name == normalized }

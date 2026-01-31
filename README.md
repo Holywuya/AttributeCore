@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.6.3.0  
+**Version**: 1.9.1.0  
 **Minecraft**: Paper 1.20+  
 **TabooLib**: 6.2.4  
 **Architecture**: SX-Attribute 3.x + AttributePlus JS System
@@ -14,7 +14,11 @@ AttributeCore is a lightweight Minecraft attribute system plugin built with **Ko
 ### Core Features
 
 - **JavaScript Custom Attributes** - Users can create custom attributes via `.js` files
+- **Dynamic Element System** - String-based elements, no hardcoded enums, fully customizable
+- **Weapon Element Types** - Define weapon element via NBT, converting all damage to that element
+- **Bidirectional Elemental Reactions** - Reactions trigger both ways (e.g., Fire→Water AND Water→Fire)
 - **Elemental Damage & Reaction System** - Genshin Impact-inspired elemental combat system
+- **MythicMobs Integration** - Full support for MythicMobs 4.x/5.x via TabooLib UM
 - **PlaceholderAPI Integration** - Auto-register all attribute placeholders via TabooLib
 - **SX-Attribute Compatible Architecture** - Based on SX-Attribute 3.x design
 - **Lore Attribute Reading** - Supports color code formats (e.g., `§c攻击力 §f100`)
@@ -37,6 +41,15 @@ AttributeCore is a lightweight Minecraft attribute system plugin built with **Ko
 | **防御力** (Defense) | Defence | Reduces damage taken | `§9防御力 §f50` |
 | **暴击率** (Crit Chance) | Attack | Critical hit probability (%) | `§6暴击率 §f25%` |
 | **暴击伤害** (Crit Damage) | Other | Critical damage multiplier (%) | `§6暴击伤害 §f150%` |
+| **生命上限** (Max Health) | Update | Increases max health | `§a生命上限 §f100` |
+| **生命恢复** (Health Regen) | Update | HP restored per second | `§a生命恢复 §f5` |
+| **移动速度** (Movement Speed) | Update | Movement speed bonus (%) | `§b移动速度 §f20%` |
+| **攻击速度** (Attack Speed) | Update | Attack speed bonus (%) | `§b攻击速度 §f15%` |
+| **幸运** (Luck) | Update | Affects loot quality | `§e幸运 §f10` |
+| **力量** (Strength) | Attack | Physical damage multiplier (%) | `§c力量 §f50` |
+| **敏捷** (Agility) | Attack/Defence | Crit bonus (2pt=1%), dodge bonus | `§a敏捷 §f30` |
+| **护甲** (Armor) | Defence | Reduces physical damage | `§9护甲 §f100` |
+| **护甲穿透** (Armor Penetration) | Attack | Ignores target armor (%) | `§c护甲穿透 §f25%` |
 
 ### JavaScript Attributes (User-defined)
 
@@ -48,18 +61,6 @@ Located in `plugins/AttributeCore/attributes/`:
 | `dodge.js` | 闪避 (Dodge) | Defence | Chance to avoid damage |
 | `thorns.js` | 荆棘 (Thorns) | Defence | Reflect damage to attacker |
 | `execute.js` | 处决 (Execute) | Attack | Extra damage on low HP targets |
-
-### Elemental Damage Attributes (JavaScript)
-
-Located in `plugins/AttributeCore/attributes/`:
-
-| File | Attribute | Element | Lore Format |
-|------|-----------|---------|-------------|
-| `fire_damage.js` | 火元素伤害 (Fire Damage) | FIRE | `§c火元素伤害 §f50` |
-| `water_damage.js` | 水元素伤害 (Water Damage) | WATER | `§9水元素伤害 §f50` |
-| `ice_damage.js` | 冰元素伤害 (Ice Damage) | ICE | `§b冰元素伤害 §f50` |
-| `electro_damage.js` | 雷元素伤害 (Electro Damage) | ELECTRO | `§e雷元素伤害 §f50` |
-| `wind_damage.js` | 风元素伤害 (Wind Damage) | WIND | `§a风元素伤害 §f50` |
 
 ### Elemental Resistance Attributes (JavaScript)
 
@@ -75,6 +76,25 @@ Located in `plugins/AttributeCore/attributes/`:
 | `physical_resistance.js` | 物理抗性 (Physical Resistance) | N/A | `§f物理抗性 §f50` | `damage × (1 - resist / (resist + 100))` |
 
 **Resistance Example**: 50 fire resistance → `50 / (50 + 100) = 33.3%` damage reduction
+
+### Elemental Penetration Attributes (JavaScript)
+
+Located in `plugins/AttributeCore/attributes/`:
+
+| File | Attribute | Element | Lore Format | Effect |
+|------|-----------|---------|-------------|--------|
+| `fire_penetration.js` | 火元素穿透 (Fire Penetration) | FIRE | `§c火元素穿透 §f30%` | Ignores 30% of target's fire resistance |
+| `water_penetration.js` | 水元素穿透 (Water Penetration) | WATER | `§9水元素穿透 §f30%` | Ignores 30% of target's water resistance |
+| `ice_penetration.js` | 冰元素穿透 (Ice Penetration) | ICE | `§b冰元素穿透 §f30%` | Ignores 30% of target's ice resistance |
+| `electro_penetration.js` | 雷元素穿透 (Electro Penetration) | ELECTRO | `§e雷元素穿透 §f30%` | Ignores 30% of target's electro resistance |
+| `wind_penetration.js` | 风元素穿透 (Wind Penetration) | WIND | `§a风元素穿透 §f30%` | Ignores 30% of target's wind resistance |
+| `physical_penetration.js` | 物理穿透 (Physical Penetration) | PHYSICAL | `§f物理穿透 §f30%` | Ignores 30% of target's physical resistance |
+
+**Penetration Formula**: `effectiveResistance = resistance × (1 - penetration / 100)`
+
+**Example**: Target has 50 fire resistance, attacker has 30% fire penetration:
+- Effective resistance = 50 × (1 - 0.3) = 35
+- Damage reduction = 35 / (35 + 100) = 25.9% (instead of 33.3%)
 
 ---
 
@@ -103,10 +123,12 @@ Located in `plugins/AttributeCore/scripts/`:
 ### Elemental Combat Example
 
 ```
-Player attacks zombie with Fire Damage (50)
+Player has a Fire Sword (NBT: 元素类型: "FIRE", 攻击力: 50)
+Player attacks zombie → Deals 50 FIRE damage
 → Zombie gets FIRE aura (5 seconds)
 
-Player attacks same zombie with Water Damage (50)
+Player switches to Water Sword (NBT: 元素类型: "WATER", 攻击力: 50)
+Player attacks same zombie with Water damage
 → Vaporize reaction triggers!
 → Water damage × 2.0 = 100 total damage
 → "§c§l[蒸发] §e触发! 造成 §c2倍 §e伤害!" message appears
@@ -148,6 +170,109 @@ function execute(context) {
 - `context.auraElement` - Existing aura on victim
 - `context.damageMultiplier` - Modify this to change damage (default: 1.0)
 - `context.cancelled` - Set to true to cancel reaction
+
+---
+
+## Weapon Element System (NEW in v1.9.0)
+
+Weapons can define their element type via NBT. All damage from that weapon will be converted to the specified element.
+
+### How It Works
+
+1. **Physical Weapons (Default)**: Weapons without element NBT deal physical damage
+2. **Elemental Weapons**: Weapons with `元素类型` NBT convert all attack damage to that element
+3. **Reaction Triggers**: Only elemental weapons can trigger elemental reactions
+
+### NBT Format
+
+```yaml
+AttributeCore:
+  元素类型: "FIRE"     # Element type: FIRE, WATER, ICE, ELECTRO, WIND
+  攻击力: 100          # Attack damage value
+```
+
+### Supported Element Types
+
+| English | Chinese | Description |
+|---------|---------|-------------|
+| PHYSICAL | 物理 | Default, no reactions |
+| FIRE | 火 | Fire damage, triggers Vaporize/Melt/Overloaded |
+| WATER | 水 | Water damage, triggers Vaporize/Frozen |
+| ICE | 冰 | Ice damage, triggers Melt/Frozen |
+| ELECTRO | 雷 | Electric damage, triggers Overloaded |
+| WIND | 风 | Wind damage, triggers Swirl |
+
+### Example Command
+
+```
+/give @p diamond_sword{AttributeCore:{元素类型:"FIRE",攻击力:100}} 1
+```
+
+This creates a fire sword that:
+- Deals 100 fire damage (not physical)
+- Applies FIRE aura to targets
+- Can trigger Vaporize (vs Water aura), Melt (vs Ice aura), Overloaded (vs Electro aura)
+
+---
+
+## MythicMobs Integration
+
+AttributeCore fully integrates with MythicMobs 4.x/5.x via **TabooLib UM (Universal-Mythic)**, allowing you to configure AttributeCore attributes directly in your MythicMobs mob files.
+
+### Requirements
+
+- MythicMobs 4.x or 5.x (auto-detected via UM)
+- TabooLib UM handles API differences automatically
+
+### MythicMobs Configuration Format
+
+```yaml
+# mobs/ExampleMob.yml
+ExampleMob:
+  Type: ZOMBIE
+  Display: '&c&l火焰僵尸'
+  Health: 200
+  Damage: 0
+  Options:
+    MovementSpeed: 0.25
+  AttributeCore:
+    攻击力: 80
+    防御力: 50
+    暴击率: 15%
+    暴击伤害: 200%
+    火元素伤害: 30
+    火元素抗性: 50
+    元素类型: "FIRE"
+```
+
+### Attribute Value Formats
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| Flat Value | `攻击力: 50` | Adds 50 flat attack damage |
+| Percentage | `暴击率: 25%` | Adds 25% crit chance |
+| Element Type | `元素类型: "FIRE"` | Sets weapon element |
+
+### Level Scaling
+
+MythicMobs level affects attribute values:
+```
+Final Value = Base Value × (1 + (Level - 1) × 0.1)
+```
+
+Example: A level 5 mob with `攻击力: 100`:
+```
+100 × (1 + (5-1) × 0.1) = 100 × 1.4 = 140
+```
+
+### Available Attributes
+
+All AttributeCore attributes are supported:
+- Core: `攻击力`, `防御力`, `暴击率`, `暴击伤害`, etc.
+- Stats: `生命上限`, `移动速度`, `攻击速度`, `幸运`, etc.
+- Combat: `力量`, `敏捷`, `护甲`, `护甲穿透`
+- Elements: `火元素伤害`, `水元素抗性`, etc.
+- Special: `元素类型` (weapon element for the mob)
 
 ---
 
@@ -321,15 +446,19 @@ lore:
   - "§9防御力 §f50"
   - "§6暴击率 §f25%"
   - "§6暴击伤害 §f150%"
+  - "§a生命上限 §f100"
+  - "§a生命恢复 §f5"
+  - "§b移动速度 §f20%"
+  - "§b攻击速度 §f15%"
+  - "§e幸运 §f10"
+  - "§c力量 §f50"
+  - "§a敏捷 §f30"
+  - "§9护甲 §f100"
+  - "§c护甲穿透 §f25%"
   - "§c吸血 §f10%"
   - "§a闪避 §f15%"
   - "§5荆棘 §f20%"
   - "§4处决 §f30%"
-  - "§c火元素伤害 §f50"
-  - "§9水元素伤害 §f50"
-  - "§b冰元素伤害 §f50"
-  - "§e雷元素伤害 §f50"
-  - "§a风元素伤害 §f50"
   - "§c火元素抗性 §f50"
   - "§9水元素抗性 §f50"
   - "§b冰元素抗性 §f50"
@@ -351,15 +480,19 @@ AttributeCore/
 │   │   ├── AttributeType.kt          # Attribute type enum
 │   │   ├── SubAttribute.kt           # Attribute base class
 │   │   ├── DamageBucket.kt           # Damage breakdown tracker
-│   │   ├── Element.kt                # Element enum (FIRE, WATER, ICE, ELECTRO, WIND)
+│   │   ├── Element.kt                # Elements object + deprecated Element enum
 │   │   └── ElementalAura.kt          # Elemental aura manager
 │   ├── manager/
 │   │   ├── AttributeManager.kt       # Attribute manager
-│   │   └── ItemAttributeReader.kt    # Item attribute reader
+│   │   ├── ItemAttributeReader.kt    # Item attribute reader
+│   │   └── WeaponElementReader.kt    # Weapon element NBT reader
 │   ├── command/
 │   │   └── AttributeCoreCommand.kt   # Plugin commands
 │   ├── hook/
-│   │   └── PlaceholderHook.kt        # PlaceholderAPI integration
+│   │   ├── PlaceholderHook.kt        # PlaceholderAPI integration
+│   │   └── mythicmobs/               # MythicMobs integration (via UM)
+│   │       ├── MythicMobsHook.kt     # Hook manager
+│   │       └── MythicMobsListener.kt # UM event listener (MM4/5)
 │   ├── listener/
 │   │   ├── DamageListener.kt         # Damage event listener
 │   │   └── EquipmentListener.kt      # Equipment change listener
@@ -377,15 +510,10 @@ AttributeCore/
 └── src/main/resources/
     ├── config.yml                    # Main config
     ├── attributes/                   # Default JS attributes
-    │   ├── lifesteal.js
+    │   ├── lifesteal.js              # Combat attributes
     │   ├── dodge.js
     │   ├── thorns.js
     │   ├── execute.js
-    │   ├── fire_damage.js            # Elemental damage attributes
-    │   ├── water_damage.js
-    │   ├── ice_damage.js
-    │   ├── electro_damage.js
-    │   ├── wind_damage.js
     │   ├── fire_resistance.js        # Elemental resistance attributes
     │   ├── water_resistance.js
     │   ├── ice_resistance.js
@@ -413,6 +541,136 @@ AttributeCore/
 ---
 
 ## Changelog
+
+### v1.9.1.0 (2026-01-31)
+- **Elemental Penetration System** - Added 6 elemental penetration attributes
+  - Added `fire_penetration.js`, `water_penetration.js`, `ice_penetration.js`, `electro_penetration.js`, `wind_penetration.js`, `physical_penetration.js`
+  - Penetration reduces the effective resistance of targets
+  - Formula: `effectiveResistance = resistance × (1 - penetration / 100)`
+  - Example: 30% fire penetration against 50 fire resistance → effective resistance = 35
+- **Element.kt Updates**
+  - Added `Elements.penetrationKey(element)` method for getting penetration attribute keys
+- **AttributeData Updates**
+  - Added `getPenetration(element)` method for querying single element penetration
+  - Added `getAllPenetrations()` method for querying all element penetrations
+- **DamageBucket Updates**
+  - Extended `applyResistances()` to accept penetration map
+  - Penetration is automatically applied during damage calculation
+- **DamageListener Updates**
+  - Now passes attacker's penetration values during resistance calculation
+  - Debug logging includes penetration information
+
+### v1.9.0.2 (2026-01-31)
+- **Code Cleanup** - Removed redundant elemental damage JS attributes
+  - Deleted `fire_damage.js`, `water_damage.js`, `ice_damage.js`, `electro_damage.js`, `wind_damage.js`
+  - These were redundant because the Weapon Element System (`WeaponElementReader`) already converts attack damage to elemental damage based on weapon NBT
+  - Elemental damage is now handled exclusively via `元素类型` NBT on weapons
+- **DamageBucket Refactoring**
+  - Removed deprecated `fromAttributeDataWithElements()` method
+  - Removed JsAttribute element caching (no longer needed)
+  - Cleaned up unused `JsAttribute` import
+- Updated documentation to reflect new weapon-based elemental damage system
+
+### v1.9.0.1 (2026-01-31)
+- **TabooLib UM Integration** - Refactored MythicMobs integration to use Universal-Mythic
+  - Replaced direct MythicMobs API calls with `ink.ptms.um.Mythic` API
+  - Now supports both MythicMobs 4.x (Legacy) and 5.x+ automatically
+  - UM handles API differences between MM versions transparently
+  - Renamed `MythicMobsV5Listener` to `MythicMobsListener` (single unified listener)
+  - Added helper methods: `isLegacy()`, `getMobDisplayName()`, `getMobFaction()`, `getMobStance()`
+  - Added MythicItem support: `getMythicItemId()`, `getMythicItemStack()`
+- **Project Cleanup**
+  - Removed Eclipse project files (.project, .classpath, .settings/)
+  - Removed obsolete bin/ directory
+  - Cleaned up old JAR files from build/libs/
+  - Updated .gitignore with comprehensive exclusion patterns
+
+### v1.9.0.0 (2026-01-31)
+- **Weapon Element System** - Weapons can now define their element type via NBT
+  - Added `WeaponElementReader.kt` to read element type from weapon NBT
+  - Weapons with `元素类型` NBT convert all attack damage to that element
+  - Physical weapons (no element NBT) deal physical damage as before
+  - Only elemental weapons can trigger elemental reactions
+- **MythicMobs V5 Integration** - Full support for MythicMobs attribute configuration
+  - Added `MythicMobsHook.kt` and `MythicMobsV5Listener.kt` in `hook/mythicmobs/`
+  - Configure attributes directly in MythicMobs mob YAML files
+  - Supports flat values, percentages, and element types
+  - Automatic level scaling: `value × (1 + (level-1) × 0.1)`
+  - Attribute caching per mob type for performance
+- **DamageBucket Refactoring**
+  - Added `fromWeaponElement(attackDamage, weaponElement)` factory method
+  - Simplified `fromAttributeData()` to only extract attack_damage as physical
+  - Deprecated old method as `fromAttributeDataWithElements()`
+- **DamageListener Updates**
+  - Now uses `WeaponElementReader.getActiveWeaponElement()` for element detection
+  - Element reactions based on weapon element rather than damage bucket analysis
+- **Config Updates**
+  - Added `weapon-element` section with NBT key configuration
+  - Added `mythicmobs` section with level scaling configuration
+
+### v1.8.0.0 (2026-01-31)
+- **RPG Base Attributes** - Added 9 new core RPG attributes for comprehensive character building
+- **New Attributes**:
+  - **生命上限 (Max Health)**: Increases entity max health, applies via Minecraft GENERIC_MAX_HEALTH
+  - **生命恢复 (Health Regen)**: Restores HP per second via scheduled task
+  - **移动速度 (Movement Speed)**: Percent-based speed bonus via GENERIC_MOVEMENT_SPEED
+  - **攻击速度 (Attack Speed)**: Percent-based attack speed via GENERIC_ATTACK_SPEED
+  - **幸运 (Luck)**: Affects loot via GENERIC_LUCK attribute
+  - **力量 (Strength)**: Physical damage multiplier (damage × (1 + strength/100))
+  - **敏捷 (Agility)**: Provides crit bonus (2pt=1%) and dodge bonus (5pt=1%)
+  - **护甲 (Armor)**: Reduces physical damage via formula: damage × (1 - armor/(armor+100))
+  - **护甲穿透 (Armor Penetration)**: Ignores percentage of target's armor
+- All new attributes support Lore parsing and PlaceholderAPI integration
+- Updated `AttributeCore.kt` to register all new attributes on enable
+
+### v1.7.1.0 (2026-01-31)
+- **Performance Optimization Release** - Major performance improvements for combat hot paths
+- **SubAttribute Caching System**:
+  - Added `getAttackAttributes()`, `getDefenceAttributes()`, `getKillerAttributes()`, `getUpdateAttributes()` cached methods
+  - `getAttributes()` now returns immutable view instead of `toList()` copy
+  - Cache invalidation on attribute registration/resort/clear
+  - Thread-safe synchronized access for all cache operations
+- **DamageListener Optimization**:
+  - Replaced repeated `filter { containsType() }` with pre-cached type-specific lists
+  - Removed redundant `sortedBy { priority }` calls (lists are pre-sorted)
+  - Reduced object allocation in event handlers
+- **DamageBucket.fromAttributeData() Optimization**:
+  - Cached JsAttribute element mapping to avoid repeated `filterIsInstance<JsAttribute>()` calls
+  - Cache invalidated when SubAttribute list changes
+- **ScriptManager.executePhase() Optimization**:
+  - Pre-grouped scripts by phase at load time
+  - Replaced runtime `filter { phases.contains() }` with direct map lookup
+- **Elements.normalize() Caching**:
+  - Added ConcurrentHashMap cache for normalized element names
+  - Avoids repeated `trim().uppercase()` on common element strings
+- **AttributeData.getAllResistances() Caching**:
+  - Added resistance calculation caching per AttributeData instance
+  - Cache auto-invalidates when resistance values change
+- All optimizations are backward compatible with existing API
+
+### v1.7.0.0 (2026-01-31)
+- **Dynamic Element System Refactoring** - Major refactoring from hardcoded enum to string-based dynamic elements
+- Elements are now string-based (`String` type) instead of `Element` enum
+- Users can define custom elements by setting `var element = "CUSTOM_ELEMENT"` in JS attributes
+- Damage goes to corresponding element buckets, fully dynamic
+- Added `Elements` object with utility functions: `normalize()`, `getDisplayName()`, `getColor()`, `isPhysical()`, `isReactive()`, `resistanceKey()`, `damageKey()`
+- Old `Element` enum kept with `@Deprecated` annotation for backward compatibility
+- **Bidirectional Elemental Reactions** - All reactions now trigger in both directions:
+  - Vaporize: Fire→Water (2.0x) OR Water→Fire (1.5x)
+  - Melt: Fire→Ice (2.0x) OR Ice→Fire (1.5x)
+  - Frozen: Ice→Water OR Water→Ice (1.2x + slowness)
+  - Overloaded: Electro→Fire OR Fire→Electro (1.5x + AoE)
+  - Swirl: Wind→Any (1.3x + spread aura)
+- **API Updates**:
+  - `AttributeAPI.getJsAttributesByElement(element: String)` - now takes string
+  - `AttributeAPI.getElement(attributeName: String): String?` - returns string
+  - `ScriptAPI.getElement(name: String): String` - returns normalized string
+  - `ScriptAPI.getResistance(entity, element: String)` - uses string elements
+  - All element parameters now accept any string, not just predefined enum values
+- `JsAttribute.element` is now `String` type instead of `Element`
+- `AttributeHandle` now uses string-based elements for all damage methods
+- Updated all reaction scripts to use string element comparison directly
+- Swirl reaction no longer requires `Element.valueOf()` conversion
 
 ### v1.6.3.0 (2026-01-31)
 - **Complete API System** - Added 4 comprehensive API modules for external plugin integration

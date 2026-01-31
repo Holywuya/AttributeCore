@@ -3,7 +3,7 @@ package com.attributecore.script
 import com.attributecore.api.AttributeCoreAPI
 import com.attributecore.api.ElementAPI
 import com.attributecore.data.DamageBucket
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import org.bukkit.Bukkit
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
@@ -96,8 +96,7 @@ object ScriptAPI {
 
     @JvmStatic
     fun getResistance(entity: LivingEntity, element: String): Double {
-        val el = Element.fromConfigKey(element) ?: return 0.0
-        return AttributeCoreAPI.getEntityData(entity).getResistance(el)
+        return AttributeCoreAPI.getEntityData(entity).getResistance(element)
     }
 
     @JvmStatic
@@ -122,7 +121,7 @@ object ScriptAPI {
 
     @JvmStatic
     fun getAuraElement(entity: LivingEntity): String? {
-        return ElementAPI.getAura(entity)?.element?.configKey
+        return ElementAPI.getAura(entity)?.element
     }
 
     @JvmStatic
@@ -152,18 +151,25 @@ object ScriptAPI {
 
     @JvmStatic
     fun addElementDamage(bucket: DamageBucket, element: String, amount: Double) {
-        val el = Element.fromConfigKey(element) ?: Element.PHYSICAL
+        val el = Elements.normalize(element)
         bucket.add(el, amount)
     }
 
     @JvmStatic
-    fun getElement(name: String): Element? {
-        return Element.fromConfigKey(name)
+    fun getElement(name: String): String {
+        return Elements.normalize(name)
     }
 
     @JvmStatic
     fun getElements(): List<String> {
-        return Element.entries.map { it.configKey }
+        return listOf(
+            Elements.PHYSICAL,
+            Elements.FIRE,
+            Elements.WATER,
+            Elements.ICE,
+            Elements.ELECTRO,
+            Elements.WIND
+        )
     }
 
     @JvmStatic

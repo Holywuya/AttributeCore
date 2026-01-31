@@ -34,10 +34,9 @@ function execute(context) {
         var world = location.getWorld();
 
         var ElementalAura = Java.type("com.attributecore.data.ElementalAura");
-        var Element = Java.type("com.attributecore.data.Element");
         var nearbyEntities = context.victim.getNearbyEntities(4.0, 4.0, 4.0);
         var spreadCount = 0;
-        var auraElement = Element.valueOf(context.auraElement);
+        var auraElement = context.auraElement;
 
         for (var i = 0; i < nearbyEntities.size(); i++) {
             var entity = nearbyEntities.get(i);
@@ -58,7 +57,6 @@ function execute(context) {
             world.playSound(location, Sound.ENTITY_ENDER_DRAGON_FLAP, 0.7, 1.5);
         }
     } catch (e) {
-        // 粒子效果失败不影响伤害计算
     }
 }
 

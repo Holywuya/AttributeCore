@@ -8,13 +8,13 @@ import com.attributecore.event.EventData
 import com.attributecore.util.DebugLogger
 import org.bukkit.entity.Player
 
-class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
+class AttackDamage : SubAttribute("攻击力", AttributeType.Attack) {
     init {
         combatPowerWeight = 1.5
         register(this)
     }
 
-    override val nbtName: String = "攻击力"
+    override val placeholder: String = "attack_damage"
     
     private val pattern = createPattern("攻击力")
 
@@ -38,12 +38,12 @@ class AttackDamage : SubAttribute("attack_damage", AttributeType.Attack) {
 
     override fun getPlaceholder(attributeData: AttributeData, player: Player, identifier: String): Any? {
         return when (identifier) {
-            "attack_damage" -> attributeData[name]
+            placeholder -> attributeData[name]
             else -> null
         }
     }
 
     override fun getPlaceholders(): List<String> {
-        return listOf("attack_damage")
+        return listOf(placeholder)
     }
 }

@@ -1,6 +1,7 @@
 package com.attributecore
 
 import com.attributecore.attribute.*
+import com.attributecore.hook.mythicmobs.MythicMobsHook
 import com.attributecore.manager.ItemAttributeReader
 import com.attributecore.script.JsAttributeLoader
 import taboolib.common.platform.Plugin
@@ -14,14 +15,25 @@ object AttributeCore : Plugin() {
         private set
 
     override fun onEnable() {
-        info("AttributeCore 已启动 - 版本 1.3.0.0")
+        info("AttributeCore 已启动 - 版本 1.9.0.1")
         info("基于 SX-Attribute 3.x 架构重构")
         info("支持 JavaScript 自定义属性")
+        info("MythicMobs 兼容层: TabooLib UM")
 
         AttackDamage()
         Defense()
         CritChance()
         CritDamage()
+        
+        MaxHealth()
+        HealthRegen()
+        MovementSpeed()
+        AttackSpeed()
+        Luck()
+        Strength()
+        Agility()
+        Armor()
+        ArmorPenetration()
         
         ItemAttributeReader.refreshNbtNameMapping()
 
@@ -33,9 +45,12 @@ object AttributeCore : Plugin() {
         
         val total = com.attributecore.data.SubAttribute.getAttributes().size
         info("属性总数: $total")
+        
+        MythicMobsHook.setup()
     }
 
     override fun onDisable() {
+        MythicMobsHook.shutdown()
         info("AttributeCore 已关闭")
     }
 }

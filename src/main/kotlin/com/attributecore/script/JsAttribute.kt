@@ -2,7 +2,7 @@ package com.attributecore.script
 
 import com.attributecore.data.AttributeData
 import com.attributecore.data.AttributeType
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import com.attributecore.data.SubAttribute
 import com.attributecore.event.EventData
 import com.attributecore.manager.AttributeManager
@@ -24,7 +24,7 @@ class JsAttribute(
 ) {
     private val jsPattern: Pattern?
     
-    val element: Element
+    val element: String
     
     override val nbtName: String
 
@@ -32,15 +32,10 @@ class JsAttribute(
         priority = extractInt(engine, "priority", 100)
         combatPowerWeight = extractDouble(engine, "combatPower", 1.0)
         
-        val patternStr = engine.get("pattern")?.toString()
         val patternSuffix = engine.get("patternSuffix")?.toString() ?: ""
-        jsPattern = if (patternStr != null) {
-            createPattern(patternStr, patternSuffix)
-        } else {
-            createPattern(name, "%")
-        }
+        jsPattern = createPattern(name, patternSuffix)
         
-        nbtName = patternStr ?: name
+        nbtName = name
         
         element = extractElement(engine)
 
@@ -53,7 +48,10 @@ class JsAttribute(
     }
 
     override val placeholder: String
-        get() = engine.get("placeholder")?.toString() ?: name
+        get() = engine.get("placeholder")?.toString() 
+            ?: engine.get("attributeName")?.toString() 
+            ?: engine.get("name")?.toString()
+            ?: scriptName
 
     override fun loadAttribute(attributeData: AttributeData, lore: String) {
         jsPattern?.let { pattern ->
@@ -183,7 +181,7 @@ class JsAttribute(
     fun getDamage(entity: LivingEntity, handle: AttributeHandle): Double = handle.getDamage()
     
     fun getDamage(entity: LivingEntity, element: String, handle: AttributeHandle): Double {
-        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        val elem = Elements.normalize(element)
         return handle.getDamage(elem)
     }
 
@@ -192,7 +190,7 @@ class JsAttribute(
     }
     
     fun setDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
-        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        val elem = Elements.normalize(element)
         handle.setDamage(elem, value)
     }
 
@@ -201,7 +199,7 @@ class JsAttribute(
     }
     
     fun addDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
-        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        val elem = Elements.normalize(element)
         handle.addDamage(elem, value)
     }
 
@@ -210,7 +208,7 @@ class JsAttribute(
     }
     
     fun takeDamage(entity: LivingEntity, element: String, value: Double, handle: AttributeHandle) {
-        val elem = Element.fromString(element) ?: Element.PHYSICAL
+        val elem = Elements.normalize(element)
         handle.takeDamage(elem, value)
     }
     
@@ -232,13 +230,15 @@ class JsAttribute(
     
     fun heal(entity: LivingEntity, amount: Double, handle: AttributeHandle) = handle.heal(entity, amount)
     
-    fun getElement(): String = element.name
+    @JvmName("getElementName")
+    fun getElement(): String = element
     
-    fun getElementDisplayName(): String = element.displayName
+    fun getElementDisplayName(): String = Elements.getDisplayName(element)
 
     companion object {
         private fun extractName(engine: ScriptEngine, fallback: String): String {
-            return engine.get("attributeName")?.toString() 
+            return engine.get("pattern")?.toString()
+                ?: engine.get("attributeName")?.toString() 
                 ?: engine.get("name")?.toString() 
                 ?: fallback
         }
@@ -269,9 +269,9 @@ class JsAttribute(
             }
         }
         
-        private fun extractElement(engine: ScriptEngine): Element {
-            val elementStr = engine.get("element")?.toString() ?: return Element.PHYSICAL
-            return Element.fromString(elementStr) ?: Element.PHYSICAL
+        private fun extractElement(engine: ScriptEngine): String {
+            val elementStr = engine.get("element")?.toString() ?: return Elements.PHYSICAL
+            return Elements.normalize(elementStr)
         }
 
         private fun extractInt(engine: ScriptEngine, key: String, default: Int): Int {

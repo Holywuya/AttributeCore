@@ -1,7 +1,7 @@
 package com.attributecore.api
 
 import com.attributecore.data.AttributeType
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import com.attributecore.data.SubAttribute
 import com.attributecore.script.JsAttribute
 import com.attributecore.script.JsAttributeLoader
@@ -69,14 +69,9 @@ object AttributeAPI {
     }
 
     @JvmStatic
-    fun getJsAttributesByElement(element: Element): List<JsAttribute> {
-        return JsAttributeLoader.getJsAttributes().filter { it.element == element }
-    }
-
-    @JvmStatic
-    fun getJsAttributesByElement(elementName: String): List<JsAttribute> {
-        val element = Element.fromConfigKey(elementName) ?: return emptyList()
-        return getJsAttributesByElement(element)
+    fun getJsAttributesByElement(element: String): List<JsAttribute> {
+        val normalized = Elements.normalize(element)
+        return JsAttributeLoader.getJsAttributes().filter { it.element == normalized }
     }
 
     @JvmStatic
@@ -105,7 +100,7 @@ object AttributeAPI {
     }
 
     @JvmStatic
-    fun getElement(attributeName: String): Element? {
+    fun getElement(attributeName: String): String? {
         val attr = SubAttribute.getByName(attributeName)
         return if (attr is JsAttribute) attr.element else null
     }

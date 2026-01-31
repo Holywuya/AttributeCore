@@ -22,6 +22,7 @@ import javax.script.SimpleBindings
 object ScriptManager {
     private val scripts = ConcurrentHashMap<String, LoadedScript>()
     private val compiledCache = ConcurrentHashMap<String, CompiledScript>()
+    private val scriptsByPhase = ConcurrentHashMap<ScriptPhase, List<LoadedScript>>()
 
     data class LoadedScript(
         val name: String,
@@ -79,6 +80,7 @@ object ScriptManager {
     fun loadScripts() {
         scripts.clear()
         compiledCache.clear()
+        scriptsByPhase.clear()
         val scriptsDir = getScriptsDir()
         
         if (!scriptsDir.exists() || !scriptsDir.isDirectory) {
@@ -88,8 +90,16 @@ object ScriptManager {
         scriptsDir.listFiles { file -> file.extension == "js" }?.forEach { jsFile ->
             loadScript(jsFile)
         }
-
+        
+        rebuildPhaseCache()
         info("已加载 ${scripts.size} 个脚本")
+    }
+    
+    private fun rebuildPhaseCache() {
+        scriptsByPhase.clear()
+        ScriptPhase.entries.forEach { phase ->
+            scriptsByPhase[phase] = scripts.values.filter { it.phases.contains(phase) }
+        }
     }
 
     private fun loadScript(jsFile: File) {
@@ -167,7 +177,7 @@ object ScriptManager {
     }
 
     fun executePhase(phase: ScriptPhase, context: ScriptContext) {
-        val matchingScripts = scripts.values.filter { it.phases.contains(phase) }
+        val matchingScripts = scriptsByPhase[phase] ?: emptyList()
         if (phase == ScriptPhase.REACTION) {
             info("元素反应阶段: 匹配脚本数=${matchingScripts.size}, 触发=${context.triggerElement}, 光环=${context.auraElement}")
         }

@@ -2,7 +2,7 @@ package com.attributecore.script
 
 import com.attributecore.data.AttributeData
 import com.attributecore.data.DamageBucket
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
@@ -34,43 +34,43 @@ class AttributeHandle(
     
     fun getDamage(entity: LivingEntity?): Double = getDamage()
     
-    fun getDamage(element: Element): Double = damageBucket[element]
+    fun getDamage(element: String): Double = damageBucket[element]
 
     fun setDamage(value: Double) {
         damageBucket.clear()
-        damageBucket[Element.PHYSICAL] = value.coerceAtLeast(0.0)
+        damageBucket[Elements.PHYSICAL] = value.coerceAtLeast(0.0)
     }
     
     fun setDamage(entity: LivingEntity?, value: Double) {
         setDamage(value)
     }
     
-    fun setDamage(element: Element, value: Double) {
+    fun setDamage(element: String, value: Double) {
         damageBucket[element] = value.coerceAtLeast(0.0)
     }
 
     fun addDamage(value: Double) {
-        damageBucket.add(Element.PHYSICAL, value)
+        damageBucket.add(Elements.PHYSICAL, value)
     }
     
     fun addDamage(entity: LivingEntity?, value: Double) {
         addDamage(value)
     }
     
-    fun addDamage(element: Element, value: Double) {
+    fun addDamage(element: String, value: Double) {
         damageBucket.add(element, value)
     }
 
     fun takeDamage(value: Double) {
-        val current = damageBucket[Element.PHYSICAL]
-        damageBucket[Element.PHYSICAL] = (current - value).coerceAtLeast(0.0)
+        val current = damageBucket[Elements.PHYSICAL]
+        damageBucket[Elements.PHYSICAL] = (current - value).coerceAtLeast(0.0)
     }
     
     fun takeDamage(entity: LivingEntity?, value: Double) {
         takeDamage(value)
     }
     
-    fun takeDamage(element: Element, value: Double) {
+    fun takeDamage(element: String, value: Double) {
         val current = damageBucket[element]
         damageBucket[element] = (current - value).coerceAtLeast(0.0)
     }
@@ -86,7 +86,7 @@ class AttributeHandle(
     fun setFinalDamage(value: Double) {
         finalDamageModifier = 0.0
         damageBucket.clear()
-        damageBucket[Element.PHYSICAL] = value.coerceAtLeast(0.0)
+        damageBucket[Elements.PHYSICAL] = value.coerceAtLeast(0.0)
     }
     
     fun getFinalDamageModifier(): Double = finalDamageModifier

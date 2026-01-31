@@ -73,6 +73,38 @@ attribute-reader:
   lore-ignore-marker: "§X"
 
 # ======================================================
+# 武器元素类型配置
+# ======================================================
+# 武器元素类型通过 NBT 定义，决定武器造成的伤害元素
+# 如果武器没有定义元素类型，默认为物理伤害 (PHYSICAL)
+#
+# NBT 格式:
+#   AttributeCore:
+#     元素类型: "FIRE"
+#     攻击力: 100
+#
+# 支持的元素类型:
+#   - PHYSICAL / 物理 (默认)
+#   - FIRE / 火
+#   - WATER / 水
+#   - ICE / 冰
+#   - ELECTRO / 雷
+#   - WIND / 风
+#   - 自定义元素名称
+#
+# 元素武器特性:
+#   - 元素武器的所有伤害都会转换为对应元素伤害
+#   - 元素武器可以触发元素反应 (蒸发、融化、超载等)
+#   - 物理武器不会触发元素反应
+#
+# 示例 (使用 /give 命令):
+#   /give @p diamond_sword{AttributeCore:{元素类型:"FIRE",攻击力:100}}
+weapon-element:
+  enabled: true
+  nbt-key-primary: "元素类型"
+  nbt-key-secondary: "ElementType"
+
+# ======================================================
 # 伤害系统配置
 # ======================================================
 damage:
@@ -109,3 +141,28 @@ advanced:
   cache-expire-time: -1
   clear-cache-on-quit: true
   equipment-update-delay: 1
+
+# ======================================================
+# MythicMobs 集成配置
+# ======================================================
+# AttributeCore 支持为 MythicMobs 怪物配置属性
+#
+# MythicMobs 怪物配置格式:
+#   ExampleMob:
+#     Type: ZOMBIE
+#     Display: '&c示例怪物'
+#     Health: 100
+#     AttributeCore:
+#       攻击力: 50
+#       防御力: 30
+#       暴击率: 25%
+#       火元素伤害: 20
+#       元素类型: "FIRE"
+#
+# 属性值支持:
+#   - 固定值: 攻击力: 50
+#   - 百分比: 暴击率: 25%
+#   - 等级缩放: 属性值 × (1 + (等级-1) × 0.1)
+mythicmobs:
+  enabled: true
+  level-scaling: 0.1

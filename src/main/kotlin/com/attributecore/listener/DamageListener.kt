@@ -3,8 +3,8 @@ package com.attributecore.listener
 import com.attributecore.data.*
 import com.attributecore.event.DamageEventData
 import com.attributecore.event.DefenceEventData
-import com.attributecore.event.KillerEventData
 import com.attributecore.manager.AttributeManager
+import com.attributecore.manager.WeaponElementReader
 import com.attributecore.script.AttributeHandle
 import com.attributecore.script.JsAttribute
 import com.attributecore.script.ScriptContext
@@ -32,10 +32,13 @@ object DamageListener {
         DebugLogger.logDamageCalculation("攻击者属性: ${attackerData.getNonZeroAttributes()}")
         DebugLogger.logDamageCalculation("防御者属性: ${victimData.getNonZeroAttributes()}")
 
-        val damageBucket = attackerData.buildDamageBucket()
-        if (damageBucket.total() <= 0) {
-            damageBucket[Element.PHYSICAL] = event.damage
-        }
+        val weaponElement = WeaponElementReader.getActiveWeaponElement(attacker)
+        DebugLogger.logDamageCalculation("武器元素类型: ${Elements.getDisplayName(weaponElement)}")
+        
+        val attackDamage = attackerData.getFinal("攻击力")
+        val baseDamage = if (attackDamage > 0) attackDamage else event.damage
+        
+        val damageBucket = DamageBucket.fromWeaponElement(baseDamage, weaponElement)
         DebugLogger.logDamageCalculation("初始伤害桶: $damageBucket")
 
         val preDamageContext = ScriptContext(
@@ -63,8 +66,8 @@ object DamageListener {
 
         val attackEvent = DamageEventData(attacker, victim, event)
         attackEvent.damage = damageBucket.total()
-        SubAttribute.getAttributes()
-            .filter { it.containsType(AttributeType.Attack) && it !is JsAttribute }
+        SubAttribute.getAttackAttributes()
+            .filter { it !is JsAttribute }
             .forEach { it.eventMethod(attackerData, attackEvent) }
 
         if (attackEvent.damage != damageBucket.total()) {
@@ -88,15 +91,16 @@ object DamageListener {
         processElementalReaction(attacker, victim, damageBucket, attackerData, victimData)
 
         val resistances = victimData.getAllResistances()
-        damageBucket.applyResistances(resistances)
-        DebugLogger.logDamageCalculation("抗性计算后: $damageBucket")
+        val penetrations = attackerData.getAllPenetrations()
+        damageBucket.applyResistances(resistances, penetrations)
+        DebugLogger.logDamageCalculation("抗性计算后: $damageBucket (穿透: $penetrations)")
 
         handle.setDamageBucket(damageBucket)
 
         val defenceEvent = DefenceEventData(victim, attacker, event)
         defenceEvent.damage = damageBucket.total()
-        SubAttribute.getAttributes()
-            .filter { it.containsType(AttributeType.Defence) && it !is JsAttribute }
+        SubAttribute.getDefenceAttributes()
+            .filter { it !is JsAttribute }
             .forEach { it.eventMethod(victimData, defenceEvent) }
 
         if (defenceEvent.damage != damageBucket.total()) {
@@ -122,10 +126,10 @@ object DamageListener {
         )
         ScriptManager.executePhase(ScriptPhase.POST_DAMAGE, postDamageContext)
 
-        val baseDamage = handle.getDamage()
-        val finalDamage = baseDamage * postDamageContext.damageMultiplier
+        val computedDamage = handle.getDamage()
+        val finalDamage = computedDamage * postDamageContext.damageMultiplier
         event.damage = finalDamage.coerceAtLeast(0.0)
-        DebugLogger.logDamageCalculation("最终伤害: ${event.damage} (基础: $baseDamage, POST倍率: ${postDamageContext.damageMultiplier})")
+        DebugLogger.logDamageCalculation("最终伤害: ${event.damage} (基础: $computedDamage, POST倍率: ${postDamageContext.damageMultiplier})")
     }
 
     @SubscribeEvent
@@ -167,10 +171,8 @@ object DamageListener {
         attackerData: AttributeData,
         handle: AttributeHandle
     ) {
-        SubAttribute.getAttributes()
+        SubAttribute.getAttackAttributes()
             .filterIsInstance<JsAttribute>()
-            .filter { it.containsType(AttributeType.Attack) }
-            .sortedBy { it.priority }
             .forEach { jsAttr ->
                 if (!handle.isCancelled()) {
                     val attrValue = attackerData[jsAttr.name]
@@ -188,10 +190,8 @@ object DamageListener {
         victimData: AttributeData,
         handle: AttributeHandle
     ) {
-        SubAttribute.getAttributes()
+        SubAttribute.getDefenceAttributes()
             .filterIsInstance<JsAttribute>()
-            .filter { it.containsType(AttributeType.Defence) }
-            .sortedBy { it.priority }
             .forEach { jsAttr ->
                 if (!handle.isCancelled()) {
                     val attrValue = victimData[jsAttr.name]
@@ -209,10 +209,8 @@ object DamageListener {
         killerData: AttributeData,
         handle: AttributeHandle
     ) {
-        SubAttribute.getAttributes()
+        SubAttribute.getKillerAttributes()
             .filterIsInstance<JsAttribute>()
-            .filter { it.containsType(AttributeType.Killer) }
-            .sortedBy { it.priority }
             .forEach { jsAttr ->
                 val attrValue = killerData[jsAttr.name]
                 if (attrValue > 0) {
@@ -229,12 +227,16 @@ object DamageListener {
         attackerData: AttributeData,
         victimData: AttributeData
     ) {
-        if (!damageBucket.hasElementalDamage()) return
+        val weaponElement = WeaponElementReader.getActiveWeaponElement(attacker)
+        
+        if (Elements.isPhysical(weaponElement)) {
+            DebugLogger.logDamageCalculation("物理伤害，不触发元素反应")
+            return
+        }
 
         val existingAura = ElementalAura.getAura(victim)
-        val triggerElement = damageBucket.elements().firstOrNull { it != Element.PHYSICAL } ?: return
 
-        if (existingAura != null && existingAura.element != triggerElement) {
+        if (existingAura != null && existingAura.element != weaponElement) {
             val reactionContext = ScriptContext(
                 phase = ScriptPhase.REACTION,
                 attacker = attacker,
@@ -242,8 +244,8 @@ object DamageListener {
                 attackerData = attackerData,
                 victimData = victimData,
                 damageBucket = damageBucket,
-                _triggerElement = triggerElement,
-                _auraElement = existingAura.element
+                triggerElement = weaponElement,
+                auraElement = existingAura.element
             )
             ScriptManager.executePhase(ScriptPhase.REACTION, reactionContext)
 
@@ -251,12 +253,12 @@ object DamageListener {
                 ElementalAura.consumeAura(victim, existingAura.element)
                 damageBucket.multiplyAll(reactionContext.damageMultiplier)
                 DebugLogger.logDamageCalculation(
-                    "元素反应: ${existingAura.element.displayName} + ${triggerElement.displayName}, 倍率: ${reactionContext.damageMultiplier}"
+                    "元素反应: ${Elements.getDisplayName(existingAura.element)} + ${Elements.getDisplayName(weaponElement)}, 倍率: ${reactionContext.damageMultiplier}"
                 )
             }
         } else {
-            ElementalAura.applyAura(victim, triggerElement)
-            DebugLogger.logDamageCalculation("附着元素: ${triggerElement.displayName}")
+            ElementalAura.applyAura(victim, weaponElement)
+            DebugLogger.logDamageCalculation("附着元素: ${Elements.getDisplayName(weaponElement)}")
         }
     }
 }

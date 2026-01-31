@@ -1,13 +1,16 @@
 // 蒸发反应 (Vaporize Reaction)
-// 触发条件: 火元素攻击附着水元素光环的目标
-// 效果: 造成 2 倍伤害
+// 触发条件: 火元素攻击附着水元素光环的目标，或水元素攻击附着火元素光环的目标
+// 效果: 造成 2 倍伤害（火→水）或 1.5 倍伤害（水→火）
 
 var phases = ["REACTION"];
 var Particle = Java.type("org.bukkit.Particle");
 var Sound = Java.type("org.bukkit.Sound");
 
 function canTrigger(context) {
-    return context.triggerElement === "FIRE" && context.auraElement === "WATER";
+    var t = context.triggerElement;
+    var a = context.auraElement;
+    // 双向触发：火+水 或 水+火
+    return (t === "FIRE" && a === "WATER") || (t === "WATER" && a === "FIRE");
 }
 
 function execute(context) {
@@ -15,10 +18,21 @@ function execute(context) {
         return;
     }
 
-    context.damageMultiplier = 2.0;
-
-    if (context.attacker && context.attacker.getType().toString() === "PLAYER") {
-        context.attacker.sendMessage("§c§l[蒸发] §e触发! 造成 §c2倍 §e伤害!");
+    var t = context.triggerElement;
+    var a = context.auraElement;
+    
+    // 火→水: 2.0倍伤害（强蒸发）
+    // 水→火: 1.5倍伤害（弱蒸发）
+    if (t === "FIRE" && a === "WATER") {
+        context.damageMultiplier = 2.0;
+        if (context.attacker && context.attacker.getType().toString() === "PLAYER") {
+            context.attacker.sendMessage("§c§l[蒸发] §e触发! 造成 §c2倍 §e伤害!");
+        }
+    } else {
+        context.damageMultiplier = 1.5;
+        if (context.attacker && context.attacker.getType().toString() === "PLAYER") {
+            context.attacker.sendMessage("§9§l[蒸发] §e触发! 造成 §c1.5倍 §e伤害!");
+        }
     }
 
     if (context.victim && context.victim.getType().toString() === "PLAYER") {

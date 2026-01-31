@@ -8,13 +8,13 @@ import com.attributecore.event.EventData
 import org.bukkit.entity.Player
 import kotlin.random.Random
 
-class CritChance : SubAttribute("crit_chance", AttributeType.Attack) {
+class CritChance : SubAttribute("暴击率", AttributeType.Attack) {
     init {
         combatPowerWeight = 0.8
         register(this)
     }
 
-    override val nbtName: String = "暴击率"
+    override val placeholder: String = "crit_chance"
     
     private val pattern = createPattern("暴击率", "%")
 
@@ -28,7 +28,7 @@ class CritChance : SubAttribute("crit_chance", AttributeType.Attack) {
         if (eventData is DamageEventData) {
             val chance = attributeData[name]
             if (chance > 0 && Random.nextDouble(100.0) < chance) {
-                val critDamage = attributeData["crit_damage"]
+                val critDamage = attributeData["暴击伤害"]
                 val multiplier = 1 + (critDamage / 100.0)
                 eventData.damage *= multiplier
                 if (eventData.attacker is Player) {
@@ -40,12 +40,12 @@ class CritChance : SubAttribute("crit_chance", AttributeType.Attack) {
 
     override fun getPlaceholder(attributeData: AttributeData, player: Player, identifier: String): Any? {
         return when (identifier) {
-            "crit_chance" -> attributeData[name]
+            placeholder -> attributeData[name]
             else -> null
         }
     }
 
     override fun getPlaceholders(): List<String> {
-        return listOf("crit_chance")
+        return listOf(placeholder)
     }
 }

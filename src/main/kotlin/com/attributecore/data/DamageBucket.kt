@@ -1,122 +1,101 @@
 package com.attributecore.data
 
-import com.attributecore.data.SubAttribute
-import com.attributecore.script.JsAttribute
-import java.util.EnumMap
+import java.util.concurrent.ConcurrentHashMap
 
-/**
- * 伤害桶 - 存储各元素类型的伤害值
- * 
- * 伤害不再是单一数值，而是按元素类型分别存储
- * 每种元素的伤害独立计算增幅和减免
- */
 data class DamageBucket(
-    private val damages: MutableMap<Element, Double> = EnumMap(Element::class.java)
+    private val damages: MutableMap<String, Double> = ConcurrentHashMap()
 ) {
-    /**
-     * 获取指定元素的伤害值
-     */
-    operator fun get(element: Element): Double = damages[element] ?: 0.0
+    operator fun get(element: String): Double = damages[Elements.normalize(element)] ?: 0.0
 
-    /**
-     * 设置指定元素的伤害值
-     */
-    operator fun set(element: Element, value: Double) {
+    @Deprecated("Use get(String) instead")
+    operator fun get(element: Element): Double = get(element.name)
+
+    operator fun set(element: String, value: Double) {
+        val normalized = Elements.normalize(element)
         if (value > 0) {
-            damages[element] = value
+            damages[normalized] = value
         } else {
-            damages.remove(element)
+            damages.remove(normalized)
         }
     }
 
-    /**
-     * 添加指定元素的伤害值
-     */
-    fun add(element: Element, value: Double) {
+    @Deprecated("Use set(String, value) instead")
+    operator fun set(element: Element, value: Double) {
+        set(element.name, value)
+    }
+
+    fun add(element: String, value: Double) {
         if (value != 0.0) {
-            damages[element] = (damages[element] ?: 0.0) + value
+            val normalized = Elements.normalize(element)
+            damages[normalized] = (damages[normalized] ?: 0.0) + value
         }
     }
 
-    /**
-     * 乘以倍率
-     */
+    @Deprecated("Use add(String, value) instead")
+    fun add(element: Element, value: Double) {
+        add(element.name, value)
+    }
+
+    fun multiply(element: String, multiplier: Double) {
+        val normalized = Elements.normalize(element)
+        damages[normalized]?.let {
+            damages[normalized] = it * multiplier
+        }
+    }
+
+    @Deprecated("Use multiply(String, multiplier) instead")
     fun multiply(element: Element, multiplier: Double) {
-        damages[element]?.let {
-            damages[element] = it * multiplier
-        }
+        multiply(element.name, multiplier)
     }
 
-    /**
-     * 对所有元素应用倍率
-     */
     fun multiplyAll(multiplier: Double) {
         damages.replaceAll { _, v -> v * multiplier }
     }
 
-    /**
-     * 计算总伤害
-     */
     fun total(): Double = damages.values.sum()
 
-    /**
-     * 获取包含伤害的所有元素
-     */
-    fun elements(): Set<Element> = damages.keys.toSet()
+    fun elements(): Set<String> = damages.keys.toSet()
 
-    /**
-     * 获取非物理元素的伤害
-     */
     fun elementalDamage(): Double = damages.entries
-        .filter { it.key != Element.PHYSICAL }
+        .filter { !Elements.isPhysical(it.key) }
         .sumOf { it.value }
 
-    /**
-     * 检查是否包含指定元素的伤害
-     */
-    fun hasElement(element: Element): Boolean = (damages[element] ?: 0.0) > 0
+    fun hasElement(element: String): Boolean = (damages[Elements.normalize(element)] ?: 0.0) > 0
 
-    /**
-     * 检查是否包含任何非物理元素
-     */
-    fun hasElementalDamage(): Boolean = damages.keys.any { it != Element.PHYSICAL }
+    @Deprecated("Use hasElement(String) instead")
+    fun hasElement(element: Element): Boolean = hasElement(element.name)
 
-    /**
-     * 克隆当前伤害桶
-     */
-    fun clone(): DamageBucket = DamageBucket(EnumMap(damages))
+    fun hasElementalDamage(): Boolean = damages.keys.any { !Elements.isPhysical(it) }
 
-    /**
-     * 清空所有伤害
-     */
+    fun clone(): DamageBucket = DamageBucket(ConcurrentHashMap(damages))
+
     fun clear() {
         damages.clear()
     }
 
-    /**
-     * 获取原始 Map（只读）
-     */
-    fun toMap(): Map<Element, Double> = damages.toMap()
+    fun toMap(): Map<String, Double> = damages.toMap()
 
-    /**
-     * 应用抗性计算
-     * @param resistances 抗性数据 Map<Element, Double>
-     * @param baseValue 防御公式基础值
-     */
-    fun applyResistances(resistances: Map<Element, Double>, baseValue: Double = 100.0) {
+    fun applyResistances(resistances: Map<String, Double>, baseValue: Double = 100.0) {
+        applyResistances(resistances, emptyMap(), baseValue)
+    }
+    
+    fun applyResistances(
+        resistances: Map<String, Double>,
+        penetrations: Map<String, Double>,
+        baseValue: Double = 100.0
+    ) {
         damages.replaceAll { element, damage ->
-            val resistance = resistances[element] ?: 0.0
-            val maxResistance = element.getMaxResistance()
-            val clampedResistance = resistance.coerceIn(0.0, maxResistance)
-            // 减伤公式: damage * (1 - resistance / (resistance + baseValue))
+            val resistance = resistances[element] ?: resistances[element.lowercase()] ?: 0.0
+            val penetration = penetrations[element] ?: penetrations[element.lowercase()] ?: 0.0
+            val penetrationPercent = penetration.coerceIn(0.0, 100.0) / 100.0
+            val effectiveResistance = resistance * (1.0 - penetrationPercent)
+            val maxResistance = Elements.getMaxResistance(element)
+            val clampedResistance = effectiveResistance.coerceIn(0.0, maxResistance)
             val reduction = clampedResistance / (clampedResistance + baseValue)
             damage * (1 - reduction)
         }
     }
 
-    /**
-     * 合并另一个伤害桶
-     */
     fun merge(other: DamageBucket) {
         other.damages.forEach { (element, value) ->
             add(element, value)
@@ -126,41 +105,36 @@ data class DamageBucket(
     override fun toString(): String {
         val parts = damages.entries
             .filter { it.value > 0 }
-            .joinToString(", ") { "${it.key.displayName}=${String.format("%.2f", it.value)}" }
+            .joinToString(", ") { "${Elements.getDisplayName(it.key)}=${String.format("%.2f", it.value)}" }
         return "DamageBucket(total=${String.format("%.2f", total())}, $parts)"
     }
 
     companion object {
-        /**
-         * 从单一伤害值创建物理伤害桶
-         */
         fun physical(damage: Double): DamageBucket {
             return DamageBucket().apply {
-                this[Element.PHYSICAL] = damage
+                this[Elements.PHYSICAL] = damage
             }
         }
+        
+        fun elemental(element: String, damage: Double): DamageBucket {
+            return DamageBucket().apply {
+                this[Elements.normalize(element)] = damage
+            }
+        }
+        
+        fun fromWeaponElement(attackDamage: Double, weaponElement: String): DamageBucket {
+            val bucket = DamageBucket()
+            val normalizedElement = Elements.normalize(weaponElement)
+            bucket[normalizedElement] = attackDamage.coerceAtLeast(0.0)
+            return bucket
+        }
 
-        /**
-         * 从 AttributeData 构建伤害桶
-         * 使用 JsAttribute.element 配置确定元素类型
-         */
         fun fromAttributeData(data: AttributeData): DamageBucket {
             val bucket = DamageBucket()
             
-            val jsAttrElements = SubAttribute.getAttributes()
-                .filterIsInstance<JsAttribute>()
-                .associate { it.name to it.element }
-            
-            data.getAll().forEach { (key, value) ->
-                if (value <= 0) return@forEach
-                
-                val isAttackDamage = key == "attack_damage" || key.contains("攻击力")
-                val isDamageAttr = key.endsWith("_damage") || key.contains("伤害")
-                
-                if (isAttackDamage || isDamageAttr) {
-                    val element = jsAttrElements[key] ?: Element.PHYSICAL
-                    bucket.add(element, value)
-                }
+            val attackDamage = data.getFinal("攻击力")
+            if (attackDamage > 0) {
+                bucket.add(Elements.PHYSICAL, attackDamage)
             }
             
             return bucket

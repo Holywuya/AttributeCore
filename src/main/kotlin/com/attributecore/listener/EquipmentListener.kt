@@ -1,6 +1,5 @@
 package com.attributecore.listener
 
-import com.attributecore.data.AttributeType
 import com.attributecore.data.SubAttribute
 import com.attributecore.event.UpdateEventData
 import com.attributecore.manager.AttributeManager
@@ -49,8 +48,7 @@ object EquipmentListener {
         val data = AttributeManager.loadEntityData(player)
         val updateEvent = UpdateEventData(player)
 
-        SubAttribute.getAttributes()
-            .filter { it.containsType(AttributeType.Update) }
+        SubAttribute.getUpdateAttributes()
             .forEach { it.eventMethod(data, updateEvent) }
     }
 }

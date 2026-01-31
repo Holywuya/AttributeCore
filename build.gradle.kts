@@ -32,8 +32,11 @@ taboolib {
 }
 
 repositories {
-    maven("https://nexus.maplex.top/repository/maven-public/")
     maven("https://maven.aliyun.com/repository/public")
+    maven {
+        url = uri("https://nexus.maplex.top/repository/maven-public/")
+        isAllowInsecureProtocol = true
+    }
     mavenCentral()
 }
 

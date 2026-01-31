@@ -1,7 +1,7 @@
 package com.attributecore.api
 
 import com.attributecore.data.DamageBucket
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import org.bukkit.entity.LivingEntity
 import java.util.function.Consumer
 
@@ -13,56 +13,31 @@ object DamageAPI {
     }
 
     @JvmStatic
-    fun createElementalBucket(element: Element, damage: Double): DamageBucket {
-        return DamageBucket().apply { this[element] = damage }
-    }
-
-    @JvmStatic
-    fun createElementalBucket(elementName: String, damage: Double): DamageBucket {
-        val element = Element.fromConfigKey(elementName) ?: Element.PHYSICAL
+    fun createElementalBucket(element: String, damage: Double): DamageBucket {
         return DamageBucket().apply { this[element] = damage }
     }
 
     @JvmStatic
     fun createMixedBucket(damages: Map<String, Double>): DamageBucket {
         val bucket = DamageBucket()
-        damages.forEach { (elementName, damage) ->
-            val element = Element.fromConfigKey(elementName) ?: Element.PHYSICAL
+        damages.forEach { (element, damage) ->
             bucket.add(element, damage)
         }
         return bucket
     }
 
     @JvmStatic
-    fun addDamage(bucket: DamageBucket, element: Element, value: Double) {
+    fun addDamage(bucket: DamageBucket, element: String, value: Double) {
         bucket.add(element, value)
     }
 
     @JvmStatic
-    fun addDamage(bucket: DamageBucket, elementName: String, value: Double) {
-        val element = Element.fromConfigKey(elementName) ?: Element.PHYSICAL
-        bucket.add(element, value)
-    }
-
-    @JvmStatic
-    fun setDamage(bucket: DamageBucket, element: Element, value: Double) {
+    fun setDamage(bucket: DamageBucket, element: String, value: Double) {
         bucket[element] = value
     }
 
     @JvmStatic
-    fun setDamage(bucket: DamageBucket, elementName: String, value: Double) {
-        val element = Element.fromConfigKey(elementName) ?: Element.PHYSICAL
-        bucket[element] = value
-    }
-
-    @JvmStatic
-    fun getDamage(bucket: DamageBucket, element: Element): Double {
-        return bucket[element]
-    }
-
-    @JvmStatic
-    fun getDamage(bucket: DamageBucket, elementName: String): Double {
-        val element = Element.fromConfigKey(elementName) ?: Element.PHYSICAL
+    fun getDamage(bucket: DamageBucket, element: String): Double {
         return bucket[element]
     }
 
@@ -78,11 +53,11 @@ object DamageAPI {
 
     @JvmStatic
     fun getPhysicalDamage(bucket: DamageBucket): Double {
-        return bucket[Element.PHYSICAL]
+        return bucket[Elements.PHYSICAL]
     }
 
     @JvmStatic
-    fun multiplyDamage(bucket: DamageBucket, element: Element, multiplier: Double) {
+    fun multiplyDamage(bucket: DamageBucket, element: String, multiplier: Double) {
         bucket.multiply(element, multiplier)
     }
 
@@ -106,7 +81,7 @@ object DamageAPI {
     }
 
     @JvmStatic
-    fun applyResistances(bucket: DamageBucket, resistances: Map<Element, Double>): DamageBucket {
+    fun applyResistances(bucket: DamageBucket, resistances: Map<String, Double>): DamageBucket {
         val result = bucket.clone()
         result.applyResistances(resistances)
         return result
@@ -125,7 +100,7 @@ object DamageAPI {
     }
 
     @JvmStatic
-    fun hasElement(bucket: DamageBucket, element: Element): Boolean {
+    fun hasElement(bucket: DamageBucket, element: String): Boolean {
         return bucket.hasElement(element)
     }
 
@@ -135,12 +110,12 @@ object DamageAPI {
     }
 
     @JvmStatic
-    fun getElements(bucket: DamageBucket): Set<Element> {
+    fun getElements(bucket: DamageBucket): Set<String> {
         return bucket.elements()
     }
 
     @JvmStatic
-    fun forEachDamage(bucket: DamageBucket, consumer: Consumer<Map.Entry<Element, Double>>) {
+    fun forEachDamage(bucket: DamageBucket, consumer: Consumer<Map.Entry<String, Double>>) {
         bucket.toMap().entries.forEach { consumer.accept(it) }
     }
 

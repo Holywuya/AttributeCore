@@ -8,25 +8,41 @@ data class AttributeData(
 ) {
     var combatPower: Double = 0.0
         private set
+    
+    @Volatile
+    private var cachedResistances: Map<String, Double>? = null
+    @Volatile
+    private var resistanceCacheValid = false
 
     operator fun get(key: String): Double = flatValues[key] ?: 0.0
 
     operator fun set(key: String, value: Double) {
         flatValues[key] = value
+        invalidateResistanceCache(key)
     }
 
     fun add(key: String, value: Double) {
         flatValues[key] = (flatValues[key] ?: 0.0) + value
+        invalidateResistanceCache(key)
     }
 
     fun getPercent(key: String): Double = percentValues[key] ?: 0.0
 
     fun setPercent(key: String, value: Double) {
         percentValues[key] = value
+        invalidateResistanceCache(key)
     }
 
     fun addPercent(key: String, value: Double) {
         percentValues[key] = (percentValues[key] ?: 0.0) + value
+        invalidateResistanceCache(key)
+    }
+    
+    private fun invalidateResistanceCache(key: String) {
+        if (key.endsWith("_resistance")) {
+            resistanceCacheValid = false
+            cachedResistances = null
+        }
     }
 
     fun getFinal(key: String): Double {
@@ -59,6 +75,8 @@ data class AttributeData(
         flatValues.clear()
         percentValues.clear()
         combatPower = 0.0
+        resistanceCacheValid = false
+        cachedResistances = null
     }
 
     fun isValid(): Boolean {
@@ -100,12 +118,40 @@ data class AttributeData(
         }
     }
 
-    fun getResistance(element: Element): Double {
-        return getFinal(element.resistanceKey())
+    fun getResistance(element: String): Double {
+        return getFinal(Elements.resistanceKey(element))
     }
 
-    fun getAllResistances(): Map<Element, Double> {
-        return Element.entries.associateWith { getResistance(it) }
+    fun getAllResistances(): Map<String, Double> {
+        if (resistanceCacheValid && cachedResistances != null) {
+            return cachedResistances!!
+        }
+        
+        val resistanceKeys = flatValues.keys.filter { it.endsWith("_resistance") } +
+                             percentValues.keys.filter { it.endsWith("_resistance") }
+        
+        val result = resistanceKeys.distinct().associate { key ->
+            val element = key.removeSuffix("_resistance").uppercase()
+            element to getFinal(key)
+        }
+        
+        cachedResistances = result
+        resistanceCacheValid = true
+        return result
+    }
+    
+    fun getPenetration(element: String): Double {
+        return getFinal(Elements.penetrationKey(element))
+    }
+    
+    fun getAllPenetrations(): Map<String, Double> {
+        val penetrationKeys = flatValues.keys.filter { it.endsWith("_penetration") } +
+                              percentValues.keys.filter { it.endsWith("_penetration") }
+        
+        return penetrationKeys.distinct().associate { key ->
+            val element = key.removeSuffix("_penetration").uppercase()
+            element to getFinal(key)
+        }
     }
 
     fun buildDamageBucket(): DamageBucket {

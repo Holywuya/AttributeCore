@@ -1,5 +1,5 @@
 // 超载反应 (Overloaded Reaction)
-// 触发条件: 雷元素攻击附着火元素光环的目标
+// 触发条件: 雷元素攻击附着火元素光环的目标，或火元素攻击附着雷元素光环的目标
 // 效果: 造成 1.5 倍伤害 + 范围爆炸伤害
 
 var phases = ["REACTION"];
@@ -7,7 +7,9 @@ var Particle = Java.type("org.bukkit.Particle");
 var Sound = Java.type("org.bukkit.Sound");
 
 function canTrigger(context) {
-    return context.triggerElement === "ELECTRO" && context.auraElement === "FIRE";
+    var t = context.triggerElement;
+    var a = context.auraElement;
+    return (t === "ELECTRO" && a === "FIRE") || (t === "FIRE" && a === "ELECTRO");
 }
 
 function execute(context) {
@@ -46,6 +48,5 @@ function execute(context) {
             world.playSound(location, Sound.ENTITY_GENERIC_EXPLODE, 1.0, 1.0);
         }
     } catch (e) {
-        // 粒子效果失败不影响伤害计算
     }
 }

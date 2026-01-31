@@ -6,7 +6,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 data class AuraInstance(
-    val element: Element,
+    val element: String,
     var gauge: Double,
     var createdAt: Long = System.currentTimeMillis()
 ) {
@@ -28,20 +28,26 @@ object ElementalAura {
     private const val DEFAULT_DURATION_MS = 12000L
     private const val DECAY_INTERVAL_TICKS = 20L
 
-    fun applyAura(entity: LivingEntity, element: Element, gauge: Double = DEFAULT_GAUGE) {
-        if (element == Element.PHYSICAL) return
+    fun applyAura(entity: LivingEntity, element: String, gauge: Double = DEFAULT_GAUGE) {
+        val normalizedElement = Elements.normalize(element)
+        if (Elements.isPhysical(normalizedElement)) return
 
         val entityAuras = auras.computeIfAbsent(entity.uniqueId) { mutableListOf() }
 
-        val existing = entityAuras.find { it.element == element }
+        val existing = entityAuras.find { it.element == normalizedElement }
         if (existing != null) {
             existing.gauge += gauge
             existing.createdAt = System.currentTimeMillis()
         } else {
-            entityAuras.add(AuraInstance(element, gauge))
+            entityAuras.add(AuraInstance(normalizedElement, gauge))
         }
 
         ensureDecayTaskRunning()
+    }
+
+    @Deprecated("Use applyAura(entity, String, gauge) instead")
+    fun applyAura(entity: LivingEntity, element: Element, gauge: Double = DEFAULT_GAUGE) {
+        applyAura(entity, element.name, gauge)
     }
 
     fun getAura(entity: LivingEntity): AuraInstance? {
@@ -52,13 +58,20 @@ object ElementalAura {
         return auras[entity.uniqueId]?.toList() ?: emptyList()
     }
 
-    fun hasAura(entity: LivingEntity, element: Element): Boolean {
-        return auras[entity.uniqueId]?.any { it.element == element } == true
+    fun hasAura(entity: LivingEntity, element: String): Boolean {
+        val normalizedElement = Elements.normalize(element)
+        return auras[entity.uniqueId]?.any { it.element == normalizedElement } == true
     }
 
-    fun consumeAura(entity: LivingEntity, element: Element, amount: Double = 1.0): Boolean {
+    @Deprecated("Use hasAura(entity, String) instead")
+    fun hasAura(entity: LivingEntity, element: Element): Boolean {
+        return hasAura(entity, element.name)
+    }
+
+    fun consumeAura(entity: LivingEntity, element: String, amount: Double = 1.0): Boolean {
+        val normalizedElement = Elements.normalize(element)
         val entityAuras = auras[entity.uniqueId] ?: return false
-        val aura = entityAuras.find { it.element == element } ?: return false
+        val aura = entityAuras.find { it.element == normalizedElement } ?: return false
 
         aura.gauge -= amount
         if (aura.gauge <= 0) {
@@ -70,12 +83,23 @@ object ElementalAura {
         return true
     }
 
-    fun clearAura(entity: LivingEntity, element: Element? = null) {
+    @Deprecated("Use consumeAura(entity, String, amount) instead")
+    fun consumeAura(entity: LivingEntity, element: Element, amount: Double = 1.0): Boolean {
+        return consumeAura(entity, element.name, amount)
+    }
+
+    fun clearAura(entity: LivingEntity, element: String? = null) {
         if (element == null) {
             auras.remove(entity.uniqueId)
         } else {
-            auras[entity.uniqueId]?.removeIf { it.element == element }
+            val normalizedElement = Elements.normalize(element)
+            auras[entity.uniqueId]?.removeIf { it.element == normalizedElement }
         }
+    }
+
+    @Deprecated("Use clearAura(entity, String?) instead")
+    fun clearAura(entity: LivingEntity, element: Element?) {
+        clearAura(entity, element?.name)
     }
 
     fun clearAll() {
@@ -102,7 +126,7 @@ object ElementalAura {
                     if (aura.isExpired(DEFAULT_DURATION_MS)) {
                         true
                     } else {
-                        val decayRate = aura.element.getDecayRate() / 20.0
+                        val decayRate = Elements.getDecayRate(aura.element) / 20.0
                         aura.decay(decayRate)
                     }
                 }

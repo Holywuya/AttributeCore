@@ -3,6 +3,12 @@
 build
 .kotlin
 bin
+nul
+
+### Eclipse ###
+.settings
+.project
+.classpath
 
 ### VSCode ###
 .vscode
@@ -13,3 +19,7 @@ bin
 
 ### Cursor ###
 .cursor
+
+### OS ###
+.DS_Store
+Thumbs.db

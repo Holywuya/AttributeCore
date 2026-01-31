@@ -1,86 +1,83 @@
 package com.attributecore.api
 
 import com.attributecore.data.AuraInstance
-import com.attributecore.data.Element
+import com.attributecore.data.Elements
 import com.attributecore.data.ElementalAura
 import org.bukkit.entity.LivingEntity
 import java.util.function.BiConsumer
 
 object ElementAPI {
     
-    fun applyAura(entity: LivingEntity, element: Element, gauge: Double = 1.0) {
+    @JvmStatic
+    fun applyAura(entity: LivingEntity, element: String, gauge: Double = 1.0) {
         ElementalAura.applyAura(entity, element, gauge)
     }
 
-    fun applyAura(entity: LivingEntity, elementName: String, gauge: Double = 1.0) {
-        val element = Element.fromConfigKey(elementName) ?: return
-        ElementalAura.applyAura(entity, element, gauge)
-    }
-
+    @JvmStatic
     fun getAura(entity: LivingEntity): AuraInstance? {
         return ElementalAura.getAura(entity)
     }
 
+    @JvmStatic
     fun getAuras(entity: LivingEntity): List<AuraInstance> {
         return ElementalAura.getAuras(entity)
     }
 
-    fun hasAura(entity: LivingEntity, element: Element): Boolean {
+    @JvmStatic
+    fun hasAura(entity: LivingEntity, element: String): Boolean {
         return ElementalAura.hasAura(entity, element)
     }
 
-    fun hasAura(entity: LivingEntity, elementName: String): Boolean {
-        val element = Element.fromConfigKey(elementName) ?: return false
-        return ElementalAura.hasAura(entity, element)
-    }
-
-    fun consumeAura(entity: LivingEntity, element: Element, amount: Double = 1.0): Boolean {
+    @JvmStatic
+    fun consumeAura(entity: LivingEntity, element: String, amount: Double = 1.0): Boolean {
         return ElementalAura.consumeAura(entity, element, amount)
     }
 
-    fun consumeAura(entity: LivingEntity, elementName: String, amount: Double = 1.0): Boolean {
-        val element = Element.fromConfigKey(elementName) ?: return false
-        return ElementalAura.consumeAura(entity, element, amount)
-    }
-
-    fun clearAura(entity: LivingEntity, element: Element? = null) {
+    @JvmStatic
+    fun clearAura(entity: LivingEntity, element: String? = null) {
         ElementalAura.clearAura(entity, element)
     }
 
-    fun clearAura(entity: LivingEntity, elementName: String?) {
-        val element = elementName?.let { Element.fromConfigKey(it) }
-        ElementalAura.clearAura(entity, element)
+    @JvmStatic
+    fun getDisplayName(element: String): String {
+        return Elements.getDisplayName(element)
     }
 
-    fun getElement(name: String): Element? {
-        return Element.fromConfigKey(name)
+    @JvmStatic
+    fun getColoredName(element: String): String {
+        return Elements.getColoredName(element)
     }
 
-    fun getElements(): List<Element> {
-        return Element.entries.toList()
+    @JvmStatic
+    fun isPhysical(element: String): Boolean {
+        return Elements.isPhysical(element)
     }
 
-    fun getReactiveElements(): List<Element> {
-        return Element.reactiveElements()
+    @JvmStatic
+    fun isReactive(element: String): Boolean {
+        return Elements.isReactive(element)
     }
 
+    @JvmStatic
     fun getActiveAuraCount(): Int {
         return ElementalAura.getActiveAuraCount()
     }
 
+    @JvmStatic
     fun getAffectedEntityCount(): Int {
         return ElementalAura.getAffectedEntityCount()
     }
 
+    @JvmStatic
     fun triggerReaction(
         attacker: LivingEntity,
         victim: LivingEntity,
-        triggerElement: Element,
-        callback: BiConsumer<Element, Element>?
+        triggerElement: String,
+        callback: BiConsumer<String, String>?
     ): Boolean {
         val existingAura = ElementalAura.getAura(victim) ?: return false
         
-        if (existingAura.element == triggerElement || triggerElement == Element.PHYSICAL) {
+        if (existingAura.element == Elements.normalize(triggerElement) || Elements.isPhysical(triggerElement)) {
             return false
         }
 

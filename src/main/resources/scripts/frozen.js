@@ -1,5 +1,5 @@
 // 冻结反应 (Frozen Reaction)
-// 触发条件: 冰元素攻击附着水元素光环的目标
+// 触发条件: 冰元素攻击附着水元素光环的目标，或水元素攻击附着冰元素光环的目标
 // 效果: 造成 1.2 倍伤害 + 冻结目标 3 秒 (减速 80%)
 
 var phases = ["REACTION"];
@@ -9,7 +9,9 @@ var PotionEffectType = Java.type("org.bukkit.potion.PotionEffectType");
 var PotionEffect = Java.type("org.bukkit.potion.PotionEffect");
 
 function canTrigger(context) {
-    return context.triggerElement === "ICE" && context.auraElement === "WATER";
+    var t = context.triggerElement;
+    var a = context.auraElement;
+    return (t === "ICE" && a === "WATER") || (t === "WATER" && a === "ICE");
 }
 
 function execute(context) {
@@ -38,6 +40,5 @@ function execute(context) {
             world.playSound(location, Sound.BLOCK_GLASS_BREAK, 1.0, 0.5);
         }
     } catch (e) {
-        // 粒子效果失败不影响伤害计算
     }
 }

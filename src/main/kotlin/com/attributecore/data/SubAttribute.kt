@@ -32,12 +32,15 @@ abstract class SubAttribute(
         protected set
     
     /**
-     * 占位符名称（用于 PlaceholderAPI）
+     * 占位符名称（用于 PlaceholderAPI，默认等于 name）
+     * 例如：攻击力属性的 placeholder 为 "attack_damage"
+     * 使用 %attributecore_attack_damage% 获取
      */
     open val placeholder: String = name
     
     /**
      * NBT 属性名称（用于 NBT 读写，默认等于 name）
+     * 由于 name 现在是中文 pattern，nbtName 默认等于 name
      */
     open val nbtName: String
         get() = name
@@ -46,8 +49,84 @@ abstract class SubAttribute(
 
     companion object {
         private val attributes = mutableListOf<SubAttribute>()
+        
+        // ===== 性能优化：预分类缓存 =====
+        @Volatile
+        private var cachedAttackAttributes: List<SubAttribute>? = null
+        @Volatile
+        private var cachedDefenceAttributes: List<SubAttribute>? = null
+        @Volatile
+        private var cachedKillerAttributes: List<SubAttribute>? = null
+        @Volatile
+        private var cachedUpdateAttributes: List<SubAttribute>? = null
+        @Volatile
+        private var cachedAttributesView: List<SubAttribute>? = null
 
-        fun getAttributes(): List<SubAttribute> = attributes.toList()
+        /**
+         * 获取所有属性的不可变视图（性能优化：避免每次 toList()）
+         */
+        fun getAttributes(): List<SubAttribute> {
+            return cachedAttributesView ?: synchronized(attributes) {
+                cachedAttributesView ?: java.util.Collections.unmodifiableList(ArrayList(attributes)).also {
+                    cachedAttributesView = it
+                }
+            }
+        }
+        
+        /**
+         * 获取攻击类型属性（预缓存，性能优化）
+         */
+        fun getAttackAttributes(): List<SubAttribute> {
+            return cachedAttackAttributes ?: synchronized(attributes) {
+                cachedAttackAttributes ?: attributes.filter { it.containsType(AttributeType.Attack) }
+                    .sortedBy { it.priority }
+                    .also { cachedAttackAttributes = it }
+            }
+        }
+        
+        /**
+         * 获取防御类型属性（预缓存，性能优化）
+         */
+        fun getDefenceAttributes(): List<SubAttribute> {
+            return cachedDefenceAttributes ?: synchronized(attributes) {
+                cachedDefenceAttributes ?: attributes.filter { it.containsType(AttributeType.Defence) }
+                    .sortedBy { it.priority }
+                    .also { cachedDefenceAttributes = it }
+            }
+        }
+        
+        /**
+         * 获取击杀类型属性（预缓存，性能优化）
+         */
+        fun getKillerAttributes(): List<SubAttribute> {
+            return cachedKillerAttributes ?: synchronized(attributes) {
+                cachedKillerAttributes ?: attributes.filter { it.containsType(AttributeType.Killer) }
+                    .sortedBy { it.priority }
+                    .also { cachedKillerAttributes = it }
+            }
+        }
+        
+        /**
+         * 获取更新类型属性（预缓存，性能优化）
+         */
+        fun getUpdateAttributes(): List<SubAttribute> {
+            return cachedUpdateAttributes ?: synchronized(attributes) {
+                cachedUpdateAttributes ?: attributes.filter { it.containsType(AttributeType.Update) }
+                    .sortedBy { it.priority }
+                    .also { cachedUpdateAttributes = it }
+            }
+        }
+        
+        /**
+         * 使缓存失效（属性变更时调用）
+         */
+        private fun invalidateCache() {
+            cachedAttackAttributes = null
+            cachedDefenceAttributes = null
+            cachedKillerAttributes = null
+            cachedUpdateAttributes = null
+            cachedAttributesView = null
+        }
 
         fun getByName(name: String): SubAttribute? = attributes.find { it.name == name }
 
@@ -55,26 +134,35 @@ abstract class SubAttribute(
          * 注册属性（简化版，直接添加到列表并排序）
          */
         fun register(attribute: SubAttribute) {
-            val existing = attributes.find { it.name == attribute.name }
-            if (existing != null) {
-                attributes.remove(existing)
+            synchronized(attributes) {
+                val existing = attributes.find { it.name == attribute.name }
+                if (existing != null) {
+                    attributes.remove(existing)
+                }
+                attributes.add(attribute)
+                attributes.sortBy { it.priority }
+                invalidateCache()
             }
-            attributes.add(attribute)
-            attributes.sortBy { it.priority }
         }
 
         /**
          * 重新排序属性列表
          */
         fun resort() {
-            attributes.sortBy { it.priority }
+            synchronized(attributes) {
+                attributes.sortBy { it.priority }
+                invalidateCache()
+            }
         }
         
         /**
          * 清空所有属性（用于重载）
          */
         fun clear() {
-            attributes.clear()
+            synchronized(attributes) {
+                attributes.clear()
+                invalidateCache()
+            }
         }
     }
 

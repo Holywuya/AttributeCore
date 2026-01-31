@@ -42,22 +42,24 @@ object PlaceholderHook : PlaceholderExpansion {
     }
 
     private fun parseAttributePlaceholder(args: String, data: com.attributecore.data.AttributeData): String {
+        val basePlaceholder = when {
+            args.endsWith("_percent") -> args.removeSuffix("_percent")
+            args.endsWith("_final") -> args.removeSuffix("_final")
+            else -> args
+        }
+        
+        val attr = findAttributeByPlaceholder(basePlaceholder)
+        val attrName = attr?.name ?: basePlaceholder
+        
         return when {
             args.endsWith("_percent") -> {
-                String.format("%.2f", data.getPercent(args.removeSuffix("_percent")))
+                String.format("%.2f", data.getPercent(attrName))
             }
             args.endsWith("_final") -> {
-                String.format("%.2f", data.getFinal(args.removeSuffix("_final")))
+                String.format("%.2f", data.getFinal(attrName))
             }
             else -> {
-                val value = data[args]
-                if (value != 0.0) {
-                    String.format("%.2f", value)
-                } else {
-                    findAttributeByPlaceholder(args)?.let { attr ->
-                        String.format("%.2f", data[attr.name])
-                    } ?: "0.00"
-                }
+                String.format("%.2f", data[attrName])
             }
         }
     }
