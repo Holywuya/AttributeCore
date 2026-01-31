@@ -1,6 +1,6 @@
 # AttributeCore
 
-**Version**: 1.3.1.0  
+**Version**: 1.4.0.0  
 **Minecraft**: Paper 1.20+  
 **TabooLib**: 6.2.4  
 **Architecture**: SX-Attribute 3.x + AttributePlus JS System
@@ -14,6 +14,7 @@ AttributeCore is a lightweight Minecraft attribute system plugin built with **Ko
 ### Core Features
 
 - **JavaScript Custom Attributes** - Users can create custom attributes via `.js` files
+- **PlaceholderAPI Integration** - Auto-register all attribute placeholders via TabooLib
 - **SX-Attribute Compatible Architecture** - Based on SX-Attribute 3.x design
 - **Lore Attribute Reading** - Supports color code formats (e.g., `§c攻击力 §f100`)
 - **NBT Attribute Reading** - Uses TabooLib ItemTag API
@@ -53,7 +54,7 @@ Located in `plugins/AttributeCore/attributes/`:
 
 ### Installation
 
-1. Download `AttributeCore-1.3.1.0.jar`
+1. Download `AttributeCore-1.4.0.0.jar`
 2. Place in server `plugins/` directory
 3. Restart server
 4. Config files generate in `plugins/AttributeCore/`
@@ -96,17 +97,9 @@ var attributeName = "my_attribute";
 // Attribute type: Attack, Defence, Update, Runtime, Killer, Custom, Other
 var attributeType = "Attack";
 
-// Placeholder name for PlaceholderAPI
-var placeholder = "my_attribute";
-
 // Lore pattern matching
 var pattern = "我的属性";
 var patternSuffix = "%";
-
-// Called when attribute loads
-function onLoad(attr) {
-    return attr;
-}
 
 // Called when entity attacks (Attack type)
 function runAttack(attr, attacker, entity, handle) {
@@ -120,37 +113,8 @@ function runAttack(attr, attacker, entity, handle) {
     return true;
 }
 
-// Called when entity takes damage (Defence type)
-function runDefense(attr, entity, killer, handle) {
-    return true;
-}
-
-// Called when entity kills another
-function runKiller(attr, killer, entity, handle) {
-    return true;
-}
-
-// Called on runtime updates
-function run(attr, entity, handle) {
-    return true;
-}
-
-// Called for custom triggers
-function runCustom(attr, caster, target, params, source, handle) {
-    return true;
-}
-
-// Placeholder handler
-function getPlaceholder(attr, attributeData, player, identifier) {
-    if (identifier === "my_attribute") {
-        return attributeData.get("my_attribute");
-    }
-    return null;
-}
-
-function getPlaceholders() {
-    return ["my_attribute"];
-}
+// Only implement the functions you need!
+// Placeholders are automatically registered via PlaceholderAPI integration
 ```
 
 ### JavaScript API Reference
@@ -198,6 +162,33 @@ function getPlaceholders() {
 
 ---
 
+## PlaceholderAPI Integration
+
+All attributes are automatically registered as PlaceholderAPI placeholders. No configuration needed!
+
+### Placeholder Format
+
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `%attributecore_<name>%` | Get attribute flat value | `%attributecore_attack_damage%` → `100.00` |
+| `%attributecore_<name>_percent%` | Get attribute percent bonus | `%attributecore_defense_percent%` → `20.00` |
+| `%attributecore_<name>_final%` | Get final value (flat * (1 + %/100)) | `%attributecore_attack_damage_final%` → `120.00` |
+| `%attributecore_combat_power%` | Get total combat power | `%attributecore_combat_power%` → `1500.00` |
+| `%attributecore_cp%` | Alias for combat_power | `%attributecore_cp%` → `1500.00` |
+| `%attributecore_list%` | List all non-zero attributes | `attack_damage: 100, defense: 50` |
+
+### Examples
+
+```
+%attributecore_life_steal%      → 10.00
+%attributecore_dodge%           → 15.00
+%attributecore_thorns%          → 20.00
+%attributecore_execute%         → 30.00
+%attributecore_crit_chance%     → 25.00
+```
+
+---
+
 ## Lore Format Examples
 
 ```yaml
@@ -229,6 +220,8 @@ AttributeCore/
 │   │   └── ItemAttributeReader.kt    # Item attribute reader
 │   ├── command/
 │   │   └── AttributeCoreCommand.kt   # Plugin commands
+│   ├── hook/
+│   │   └── PlaceholderHook.kt        # PlaceholderAPI integration
 │   ├── listener/
 │   │   ├── DamageListener.kt         # Damage event listener
 │   │   └── EquipmentListener.kt      # Equipment change listener
@@ -265,6 +258,13 @@ AttributeCore/
 ---
 
 ## Changelog
+
+### v1.4.0.0 (2026-01-31)
+- **PlaceholderAPI Integration** - Auto-register all attribute placeholders via TabooLib
+- Added `hook/PlaceholderHook.kt` implementing TabooLib `PlaceholderExpansion`
+- Simplified JS attributes - removed placeholder functions (auto-registered now)
+- Placeholder formats: `%attributecore_<attr>%`, `%attributecore_<attr>_percent%`, `%attributecore_<attr>_final%`
+- Added `%attributecore_combat_power%` and `%attributecore_list%` placeholders
 
 ### v1.3.1.0 (2026-01-31)
 - **JS Attribute Integration in DamageListener** - JS attributes now trigger during combat
