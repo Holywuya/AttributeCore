@@ -28,6 +28,7 @@ taboolib {
         }
     }
     relocate("ink.ptms.um", "com.attributecore.um")
+    relocate("kotlin.", "com.attributecore.kotlin.")
     version { taboolib = "6.2.4-e6c8347" }
 }
 

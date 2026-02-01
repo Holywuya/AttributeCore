@@ -95,7 +95,10 @@ data class AttributeData(
     }
 
     fun getNonZeroAttributes(): Map<String, Double> {
-        return flatValues.filterValues { it != 0.0 }
+        // 只返回已注册的属性中非零的值，过滤掉未注册的属性（如旧版本中已删除的属性）
+        val registeredNames = SubAttribute.getAttributes().map { it.name }.toSet()
+        return flatValues.filterKeys { it in registeredNames }
+            .filterValues { it != 0.0 }
     }
 
     fun calculateCombatPower(weights: Map<String, Double> = emptyMap()): Double {
